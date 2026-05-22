@@ -16,7 +16,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   late Future<List<Map<String, dynamic>>> ordersFuture;
   String searchQuery = '';
 
-  static const String ordersUrl = 'http://172.16.255.159:3000/orders';
+  static const String ordersUrl = 'https://giftdesign-api.onrender.com/orders';
 
   @override
   void initState() {

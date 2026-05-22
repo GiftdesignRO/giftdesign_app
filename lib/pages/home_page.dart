@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
@@ -25,6 +28,7 @@ class _HomePageState extends State<HomePage> {
   String searchQuery = '';
   String selectedCategory = 'Toate';
   String selectedSort = 'noi';
+  final searchController = TextEditingController();
   bool showMainCategoryProducts = false;
   String accountMode = 'menu';
   String? loggedUserName;
@@ -35,6 +39,19 @@ class _HomePageState extends State<HomePage> {
   int analyticsAddToCart = 0;
   int analyticsSearches = 0;
   bool cartBounce = false;
+  final PageController heroController = PageController();
+  int currentHeroIndex = 0;
+  Timer? heroTimer;
+  final GlobalKey cartIconKey = GlobalKey();
+  final TextEditingController couponController = TextEditingController();
+  final double freeShippingThreshold = 400;
+  double discountValue = 0;
+  String appliedCoupon = '';
+  bool giftFinderExpanded = false;
+  String giftRecipient = 'Oricine';
+  String giftOccasion = 'Surpriză';
+  String giftBudget = 'Toate';
+  String giftFinderStatus = '';
 
   final accountNameController = TextEditingController();
   final accountEmailController = TextEditingController();
@@ -75,16 +92,21 @@ class _HomePageState extends State<HomePage> {
     loadSavedUser();
     loadSavedFavorites();
     loadPhase3Settings();
+    startHeroAutoSlide();
   }
 
   @override
   void dispose() {
+    searchController.dispose();
     accountNameController.dispose();
     accountEmailController.dispose();
     accountPasswordController.dispose();
     accountConfirmPasswordController.dispose();
     loginEmailController.dispose();
     loginPasswordController.dispose();
+    couponController.dispose();
+    heroTimer?.cancel();
+    heroController.dispose();
     super.dispose();
   }
 
@@ -170,6 +192,23 @@ Future<void> logoutAccount() async {
     });
   }
 
+  void startHeroAutoSlide() {
+    heroTimer = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) {
+        if (!mounted || !heroController.hasClients) return;
+
+        final nextIndex = (currentHeroIndex + 1) % 3;
+
+        heroController.animateToPage(
+          nextIndex,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOutCubic,
+        );
+      },
+    );
+  }
+
   Future<void> saveDarkMode(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('dark_mode', value);
@@ -201,10 +240,18 @@ Future<void> logoutAccount() async {
     saveAnalytics();
   }
 
-  Color get appBackgroundColor => darkMode ? const Color(0xFF111111) : const Color(0xFFF5F5F5);
-  Color get appCardColor => darkMode ? const Color(0xFF1E1E1E) : Colors.white;
-  Color get appTextColor => darkMode ? Colors.white : Colors.black;
-  Color get appMutedTextColor => darkMode ? Colors.grey.shade400 : Colors.grey.shade700;
+  Color get appBackgroundColor =>
+      darkMode ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5);
+  Color get appCardColor =>
+      darkMode ? const Color(0xFF1B1B20) : Colors.white;
+  Color get appSurfaceColor =>
+      darkMode ? const Color(0xFF24242A) : Colors.white;
+  Color get appTextColor =>
+      darkMode ? Colors.white : Colors.black;
+  Color get appMutedTextColor =>
+      darkMode ? Colors.grey.shade400 : Colors.grey.shade700;
+  Color get appBorderColor =>
+      darkMode ? Colors.white.withOpacity(0.08) : Colors.grey.shade200;
 
   void addRecentlyViewed(Product product) {
     setState(() {
@@ -223,7 +270,91 @@ Future<void> logoutAccount() async {
 
   double get cartTotal => cart.values.fold<double>(0, (sum, item) => sum + item.total);
 
-  void addToCart(Product product) {
+
+  
+  void flyToCartFrom(BuildContext sourceContext) {
+    final sourceBox =
+        sourceContext.findRenderObject() as RenderBox?;
+    final cartBox =
+        cartIconKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+
+    if (sourceBox == null || cartBox == null) {
+      return;
+    }
+
+    final start = sourceBox.localToGlobal(
+      sourceBox.size.center(Offset.zero),
+      ancestor: overlay,
+    );
+
+    final end = cartBox.localToGlobal(
+      cartBox.size.center(Offset.zero),
+      ancestor: overlay,
+    );
+
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (_) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 1250),
+          curve: Curves.easeInOutCubicEmphasized,
+          onEnd: () => entry.remove(),
+          builder: (context, value, child) {
+            final x = start.dx + ((end.dx - start.dx) * value);
+
+            final arcHeight = 180 * (1 - (value - 0.5).abs() * 2);
+
+            final y = start.dy +
+                ((end.dy - start.dy) * value) -
+                arcHeight;
+
+            final scale = 1.25 - (0.55 * value);
+
+            return Positioned(
+              left: x - 26,
+              top: y - 26,
+              child: IgnorePointer(
+                child: Transform.scale(
+                  scale: scale,
+                  child: Opacity(
+                    opacity: 1,
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: primaryColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withOpacity(0.45),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    Overlay.of(context).insert(entry);
+  }
+
+void addToCart(Product product) {
     trackAddToCart();
 
     final key = cartKey(product);
@@ -285,7 +416,35 @@ Future<void> logoutAccount() async {
   }
 
   void clearCart() {
-    setState(() => cart.clear());
+    setState(() {
+      cart.clear();
+      discountValue = 0;
+      appliedCoupon = '';
+      couponController.clear();
+    });
+  }
+
+  void applyCoupon() {
+    final code = couponController.text.trim().toUpperCase();
+
+    if (code == 'GIFT10') {
+      setState(() {
+        appliedCoupon = code;
+        discountValue = cartTotal * 0.10;
+      });
+
+      HapticFeedback.mediumImpact();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cod promo aplicat: -10%')),
+      );
+
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cod invalid')),
+    );
   }
 
   void toggleFavorite(Product product) {
@@ -414,7 +573,7 @@ Future<void> logoutAccount() async {
               placeholder: (_, __) => Container(
                 height: height,
                 width: width,
-                color: Colors.grey.shade200,
+                color: appBorderColor,
               ),
               errorWidget: (_, __, ___) => Container(
                 height: height,
@@ -531,6 +690,74 @@ Future<void> logoutAccount() async {
     return score;
   }
 
+  int productsAnimationSeed(Product product) {
+    return product.title.length % 6;
+  }
+
+  List<Product> aiGiftFinderMatches(List<Product> products) {
+    final recipientKeywords = <String, List<String>>{
+      'Copil': ['jucării', 'copii', 'bebe', 'puzzle', 'pluș', 'figurine', 'păpuși', 'rechizite', 'camera copilului'],
+      'Ea': ['damă', 'bijuterii', 'genți', 'fashion', 'cosmetice', 'portfard', 'eșarfe', 'decorațiuni'],
+      'El': ['bărbați', 'sport', 'camping', 'fitness', 'grătar', 'birou', 'ceasuri'],
+      'Casă': ['home', 'deco', 'decorative', 'bucătărie', 'servire', 'lămpi', 'vaze', 'rame', 'lumânări'],
+      'Pet': ['petshop', 'animale', 'zgărzi', 'jucării animale', 'culcușuri'],
+      'Oricine': ['cadou', 'party', 'carduri', 'home', 'fashion'],
+    };
+
+    final occasionKeywords = <String, List<String>>{
+      'Zi de naștere': ['party', 'baloane', 'felicitări', 'lumânări', 'cadou', 'jucării'],
+      'Casă nouă': ['home', 'deco', 'bucătărie', 'servire', 'vaze', 'rame', 'lămpi'],
+      'Relaxare': ['relaxare', 'masaj', 'lumânări', 'hamace', 'perne', 'odorizante'],
+      'Outdoor': ['camping', 'grădină', 'sport', 'picnic', 'hamace', 'umbrele'],
+      'Surpriză': ['cadou', 'premium', 'decorative', 'party', 'fashion'],
+    };
+
+    bool fitsBudget(Product product) {
+      final price = priceValue(product);
+      switch (giftBudget) {
+        case 'sub 50 Lei':
+          return price <= 50;
+        case '50-150 Lei':
+          return price >= 50 && price <= 150;
+        case '150-400 Lei':
+          return price >= 150 && price <= 400;
+        case '400+ Lei':
+          return price >= 400;
+        case 'Toate':
+        default:
+          return true;
+      }
+    }
+
+    int score(Product product) {
+      final haystack = '${product.title} ${product.category} ${product.description} ${product.shortDescription}'.toLowerCase();
+      var value = 0;
+
+      for (final keyword in recipientKeywords[giftRecipient] ?? const <String>[]) {
+        if (haystack.contains(keyword.toLowerCase())) value += 4;
+      }
+
+      for (final keyword in occasionKeywords[giftOccasion] ?? const <String>[]) {
+        if (haystack.contains(keyword.toLowerCase())) value += 3;
+      }
+
+      if (product.discountPercent > 0) value += 2;
+      if (favoriteKeys.contains(cartKey(product))) value += 2;
+      if (recentlyViewed.any((item) => cartKey(item) == cartKey(product))) value += 1;
+
+      return value;
+    }
+
+    final ranked = products.where(fitsBudget).toList()
+      ..sort((a, b) {
+        final scoreCompare = score(b).compareTo(score(a));
+        if (scoreCompare != 0) return scoreCompare;
+        return priceValue(a).compareTo(priceValue(b));
+      });
+
+    return ranked.take(8).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -542,10 +769,12 @@ Future<void> logoutAccount() async {
     ];
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: appBackgroundColor,
       appBar: AppBar(
         centerTitle: true,
         backgroundColor: appCardColor,
+        foregroundColor: appTextColor,
         elevation: 0,
         title: GestureDetector(
           onTap: () {
@@ -563,97 +792,125 @@ Future<void> logoutAccount() async {
           ),
         ),
       ),
-      body: pages[selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: appCardColor,
-        currentIndex: selectedIndex,
-        selectedItemColor: primaryColor,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
-        items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          const BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categorii'),
-          BottomNavigationBarItem(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.favorite),
-                if (favorites.isNotEmpty)
-                  Positioned(
-                    right: -8,
-                    top: -6,
-                    child: badge(favorites.length),
-                  ),
-              ],
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+        color: appBackgroundColor,
+        child: pages[selectedIndex],
+      ),
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.10),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
             ),
-            label: 'Favorite',
-          ),
-          BottomNavigationBarItem(
-            icon: AnimatedScale(
-              scale: cartBounce ? 1.25 : 1,
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.elasticOut,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedRotation(
-                    turns: cartBounce ? 0.035 : 0,
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOut,
-                    child: const Icon(Icons.shopping_cart),
-                  ),
-                  if (cart.isNotEmpty)
-                    Positioned(
-                      right: -8,
-                      top: -6,
-                      child: AnimatedScale(
-                        scale: cartBounce ? 1.18 : 1,
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.elasticOut,
-                        child: badge(cartItemCount),
-                      ),
-                    ),
-                ],
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: BottomNavigationBar(
+            backgroundColor: darkMode ? const Color(0xFF1B1B20).withOpacity(0.94) : Colors.white.withOpacity(0.92),
+            currentIndex: selectedIndex,
+            selectedItemColor: primaryColor,
+            unselectedItemColor: darkMode ? Colors.grey.shade500 : Colors.grey,
+            type: BottomNavigationBarType.fixed,
+            elevation: 0,
+            onTap: (index) {
+              setState(() {
+                selectedIndex = index;
+              });
+            },
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
               ),
-            ),
-            label: 'Coș',
-          ),
-          BottomNavigationBarItem(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.account_circle),
-
-                if (loggedUserEmail != null)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 1.5,
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.category),
+                label: 'Categorii',
+              ),
+              BottomNavigationBarItem(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.favorite),
+                    if (favorites.isNotEmpty)
+                      Positioned(
+                        right: -8,
+                        top: -6,
+                        child: badge(favorites.length),
+                      ),
+                  ],
+                ),
+                label: 'Favorite',
+              ),
+              BottomNavigationBarItem(
+                icon: AnimatedScale(
+                  scale: cartBounce ? 1.55 : 1,
+                  duration: const Duration(milliseconds: 520),
+                  curve: Curves.elasticOut,
+                  child: Stack(
+                    key: cartIconKey,
+                    clipBehavior: Clip.none,
+                    children: [
+                      AnimatedRotation(
+                        turns: cartBounce ? 0.09 : 0,
+                        duration: const Duration(milliseconds: 520),
+                        curve: Curves.easeOut,
+                        child: const Icon(Icons.shopping_cart),
+                      ),
+                      if (cart.isNotEmpty)
+                        Positioned(
+                          right: -8,
+                          top: -6,
+                          child: AnimatedScale(
+                            scale: cartBounce ? 1.18 : 1,
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.elasticOut,
+                            child: badge(cartItemCount),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                label: 'Coș',
+              ),
+              BottomNavigationBarItem(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.account_circle),
+                    if (loggedUserEmail != null)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1.5,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-            label: loggedUserName != null &&
-                    loggedUserName!.isNotEmpty
-                ? loggedUserName!
-                : 'Cont',
+                  ],
+                ),
+                label: loggedUserName != null &&
+                        loggedUserName!.isNotEmpty
+                    ? loggedUserName!
+                    : 'Cont',
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -680,7 +937,7 @@ Future<void> logoutAccount() async {
         height: height,
         width: width,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: darkMode ? const Color(0xFF24242A) : Colors.white,
           borderRadius: BorderRadius.circular(radius),
         ),
       );
@@ -689,7 +946,7 @@ Future<void> logoutAccount() async {
     Widget productSkeletonCard() {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: appCardColor,
           borderRadius: BorderRadius.circular(22),
         ),
         clipBehavior: Clip.antiAlias,
@@ -722,8 +979,8 @@ Future<void> logoutAccount() async {
     }
 
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
+      baseColor: darkMode ? Colors.grey.shade800 : Colors.grey.shade300,
+      highlightColor: darkMode ? Colors.grey.shade700 : Colors.grey.shade100,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -752,7 +1009,7 @@ Future<void> logoutAccount() async {
               crossAxisCount: 2,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
-              mainAxisExtent: 365,
+              mainAxisExtent: 450,
             ),
             itemBuilder: (_, __) => productSkeletonCard(),
           ),
@@ -801,20 +1058,25 @@ Future<void> logoutAccount() async {
               pinned: true,
               delegate: StickySearchHeaderDelegate(
                 height: 79,
+                backgroundColor: appBackgroundColor,
                 child: Container(
-                  color: const Color(0xFFF5F5F5),
+                  color: appBackgroundColor,
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: searchBox(),
                 ),
               ),
+            ),
+            SliverToBoxAdapter(
+              child: searchSuggestionsPanel(products),
             ),
             if (showCategoryNavigation)
               SliverPersistentHeader(
                 pinned: true,
                 delegate: StickySearchHeaderDelegate(
                   height: 92,
+                  backgroundColor: appBackgroundColor,
                   child: Container(
-                    color: const Color(0xFFF5F5F5),
+                    color: appBackgroundColor,
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
                     child: categoryNavigationBar(
                       title: selectedParentGroup != null
@@ -832,6 +1094,8 @@ Future<void> logoutAccount() async {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     promoBanner(),
+                    const SizedBox(height: 20),
+                    aiGiftFinderSection(products),
                     const SizedBox(height: 20),
                     categoryChips(categories, products, merchantCategories),
                     const SizedBox(height: 14),
@@ -1002,11 +1266,123 @@ Future<void> logoutAccount() async {
     );
   }
 
+
+
+  List<Product> smartSuggestions(List<Product> products) {
+    final query = searchQuery.toLowerCase().trim();
+
+    if (query.isEmpty || query.length < 2) {
+      return [];
+    }
+
+    return products.where((product) {
+      return product.title.toLowerCase().contains(query) ||
+          product.category.toLowerCase().contains(query) ||
+          product.sku.toLowerCase().contains(query);
+    }).take(5).toList();
+  }
+
+  Widget searchSuggestionsPanel(List<Product> products) {
+    final suggestions = smartSuggestions(products);
+
+    if (suggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      decoration: BoxDecoration(
+        color: appSurfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: appBorderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: suggestions.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: Colors.grey.shade200,
+        ),
+        itemBuilder: (context, index) {
+          final product = suggestions[index];
+          final image = product.images.isNotEmpty
+              ? product.images.first
+              : '';
+
+          return ListTile(
+            dense: true,
+            onTap: () {
+              FocusScope.of(context).unfocus();
+
+              searchController.clear();
+
+              setState(() {
+                searchQuery = '';
+              });
+
+              openProduct(product);
+            },
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: image.isEmpty
+                  ? Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image_outlined),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: image,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            title: Text(
+              product.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: Text(
+              product.price,
+              style: const TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            trailing: const Icon(
+              Icons.north_west_rounded,
+              color: primaryColor,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget searchBox() {
     return Container(
       height: 55,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: appSurfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: appBorderColor),
+      ),
       child: TextField(
+        controller: searchController,
+        style: TextStyle(color: appTextColor),
         onChanged: (value) {
           if (value.trim().isNotEmpty) {
             trackSearch();
@@ -1016,32 +1392,178 @@ Future<void> logoutAccount() async {
             searchQuery = value;
           });
         },
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: 'Caută produse...',
-          prefixIcon: Icon(Icons.search),
+          hintStyle: TextStyle(color: appMutedTextColor),
+          prefixIcon: Icon(Icons.search, color: appMutedTextColor),
+          suffixIcon: searchQuery.trim().isEmpty
+              ? null
+              : IconButton(
+                  icon: Icon(Icons.close, color: appMutedTextColor),
+                  onPressed: () {
+                    searchController.clear();
+
+                    setState(() {
+                      searchQuery = '';
+                    });
+                  },
+                ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
         ),
       ),
     );
   }
 
   Widget promoBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: primaryColor,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Cadouri personalizate', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-          SizedBox(height: 6),
-          Text('Alege un cadou memorabil pentru orice ocazie', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 15)),
-        ],
-      ),
+    final banners = [
+      {
+        'title': 'Cadouri memorabile',
+        'subtitle': 'Surprize premium pentru orice ocazie',
+        'icon': Icons.card_giftcard,
+      },
+      {
+        'title': 'Transport gratuit',
+        'subtitle': 'La comenzile peste 400 Lei',
+        'icon': Icons.local_shipping_outlined,
+      },
+      {
+        'title': 'GiftDesign Premium',
+        'subtitle': 'Experiență modernă de shopping',
+        'icon': Icons.auto_awesome,
+      },
+    ];
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: heroController,
+            onPageChanged: (index) {
+              setState(() {
+                currentHeroIndex = index;
+              });
+            },
+            itemCount: banners.length,
+            itemBuilder: (_, index) {
+              final banner = banners[index];
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      primaryColor,
+                      primaryColor.withOpacity(0.72),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.28),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -24,
+                      top: -24,
+                      child: Container(
+                        width: 156,
+                        height: 156,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 28,
+                      bottom: 22,
+                      child: Icon(
+                        banner['icon'] as IconData,
+                        color: Colors.white.withOpacity(0.13),
+                        size: 108,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.18),
+                              ),
+                            ),
+                            child: Icon(
+                              banner['icon'] as IconData,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            banner['title'] as String,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            banner['subtitle'] as String,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            banners.length,
+            (index) {
+              final active = currentHeroIndex == index;
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 350),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: active ? 24 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: active ? primaryColor : Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1143,9 +1665,13 @@ Future<void> logoutAccount() async {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Văzute recent',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: appTextColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -1209,7 +1735,7 @@ Future<void> logoutAccount() async {
                               product.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(fontWeight: FontWeight.bold, color: appTextColor),
                             ),
                             const Spacer(),
                             productPriceBlock(
@@ -1239,6 +1765,305 @@ Future<void> logoutAccount() async {
     );
   }
 
+  Widget aiGiftFinderSection(List<Product> products) {
+    final matches = giftFinderStatus.isEmpty ? <Product>[] : aiGiftFinderMatches(products);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appCardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: appBorderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              setState(() {
+                giftFinderExpanded = !giftFinderExpanded;
+              });
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: primaryColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Gift Finder',
+                        style: TextStyle(
+                          color: appTextColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Alege rapid pentru cine, ocazia și bugetul.',
+                        style: TextStyle(color: appMutedTextColor, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: giftFinderExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded),
+                ),
+              ],
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 18),
+                giftOptionGroup(
+                  title: 'Pentru cine?',
+                  value: giftRecipient,
+                  options: const ['Oricine', 'Ea', 'El', 'Copil', 'Casă', 'Pet'],
+                  onSelected: (value) {
+                    setState(() {
+                      giftRecipient = value;
+                      giftFinderStatus = '';
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                giftOptionGroup(
+                  title: 'Ocazie',
+                  value: giftOccasion,
+                  options: const ['Surpriză', 'Zi de naștere', 'Casă nouă', 'Relaxare', 'Outdoor'],
+                  onSelected: (value) {
+                    setState(() {
+                      giftOccasion = value;
+                      giftFinderStatus = '';
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                giftOptionGroup(
+                  title: 'Buget',
+                  value: giftBudget,
+                  options: const ['Toate', 'sub 50 Lei', '50-150 Lei', '150-400 Lei', '400+ Lei'],
+                  onSelected: (value) {
+                    setState(() {
+                      giftBudget = value;
+                      giftFinderStatus = '';
+                    });
+                  },
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      setState(() {
+                        giftFinderStatus = 'Cadouri recomandate pentru $giftRecipient • $giftOccasion • $giftBudget';
+                      });
+                    },
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Găsește cadouri'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                if (giftFinderStatus.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Text(
+                    giftFinderStatus,
+                    style: TextStyle(
+                      color: appTextColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (matches.isEmpty)
+                    Text(
+                      'Nu am găsit potriviri bune. Încearcă alt buget sau altă ocazie.',
+                      style: TextStyle(color: appMutedTextColor),
+                    )
+                  else
+                    SizedBox(
+                      height: 236,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: matches.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) => giftProductCard(matches[index]),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+            crossFadeState: giftFinderExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 280),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget giftOptionGroup({
+    required String title,
+    required String value,
+    required List<String> options,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: appTextColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final selected = value == option;
+            return ChoiceChip(
+              selected: selected,
+              label: Text(option),
+              backgroundColor: appSurfaceColor,
+              selectedColor: primaryColor.withOpacity(darkMode ? 0.24 : 0.14),
+              checkmarkColor: primaryColor,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelStyle: TextStyle(
+                color: selected ? primaryColor : appTextColor,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w700,
+                fontSize: 13,
+              ),
+              side: BorderSide(
+                color: selected ? primaryColor : appBorderColor,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              onSelected: (_) => onSelected(option),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget giftProductCard(Product product) {
+    final image = product.images.isNotEmpty ? product.images.first : '';
+
+    return GestureDetector(
+      onTap: () => openProduct(product),
+      child: Container(
+        width: 165,
+        decoration: BoxDecoration(
+          color: appSurfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: appBorderColor),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            imageThumb(
+              image,
+              height: 105,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: appTextColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Spacer(),
+                    productPriceBlock(
+                      product,
+                      priceSize: 14,
+                      oldPriceSize: 10,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 34,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          addToCart(product);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Adaugă',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget categoryChips(List<String> categories, List<Product> products, List<CategoryData> merchantCategories) {
     final visibleCategories = categories.where((category) => category != 'Toate').toList();
 
@@ -1265,9 +2090,14 @@ Future<void> logoutAccount() async {
               width: 118,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: appCardColor,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: selected ? primaryColor : Colors.grey.shade200, width: selected ? 2 : 1),
+                border: Border.all(
+                  color: selected
+                      ? primaryColor
+                      : (darkMode ? Colors.white24 : Colors.grey.shade200),
+                  width: selected ? 2 : 1,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.04),
@@ -1307,7 +2137,9 @@ Future<void> logoutAccount() async {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: selected ? primaryColor : Colors.black,
+                        color: darkMode
+                            ? Colors.white
+                            : (selected ? primaryColor : Colors.black),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                         height: 1.1,
@@ -1381,7 +2213,7 @@ Future<void> logoutAccount() async {
         });
       },
       child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: appCardColor, borderRadius: BorderRadius.circular(20)),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1514,11 +2346,26 @@ Future<void> logoutAccount() async {
     final parsedDate = DateTime.tryParse(product.dateCreated);
     final isNew = parsedDate != null && DateTime.now().difference(parsedDate).inDays <= 30;
 
-    return GestureDetector(
-      onTap: () => openProduct(product),
-      child: Container(
+    final animationSeed = productsAnimationSeed(product);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 360 + (animationSeed * 80)),
+      curve: Curves.easeOutCubic,
+      builder: (_, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTap: () => openProduct(product),
+        child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: darkMode ? const Color(0xFF1B1B20) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
@@ -1618,25 +2465,46 @@ Future<void> logoutAccount() async {
                   top: 10,
                   child: GestureDetector(
                     onTap: () => toggleFavorite(product),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    child: AnimatedScale(
+                      scale: isFavorite ? 1.15 : 1,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.elasticOut,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isFavorite
+                              ? Colors.red.withOpacity(0.12)
+                              : Colors.white.withOpacity(0.95),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          transitionBuilder: (child, animation) {
+                            return ScaleTransition(
+                              scale: animation,
+                              child: child,
+                            );
+                          },
+                          child: Icon(
+                            isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            key: ValueKey(isFavorite),
+                            color: isFavorite
+                                ? Colors.red
+                                : primaryColor,
+                            size: 21,
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: primaryColor,
-                        size: 21,
+                        ),
                       ),
                     ),
                   ),
@@ -1653,39 +2521,55 @@ Future<void> logoutAccount() async {
                       product.category,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: appMutedTextColor, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 5),
                     Text(
                       product.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, height: 1.2),
+                      style: TextStyle(color: appTextColor, fontWeight: FontWeight.w800, fontSize: 14, height: 1.2),
                     ),
                     const Spacer(),
                     productPriceBlock(product),
                     const SizedBox(height: 9),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: () => addToCart(product),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                        ),
-                        icon: const Icon(Icons.shopping_cart_outlined, size: 17),
-                        label: const Text('Adaugă', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                    Builder(
+                      builder: (buttonContext) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 40,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              flyToCartFrom(buttonContext);
+                              addToCart(product);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 17,
+                            ),
+                            label: const Text(
+                              'Adaugă',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1805,6 +2689,7 @@ Future<void> logoutAccount() async {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () {
+                                  flyToCartFrom(context);
                                   addToCart(product);
                                 },
 
@@ -1873,7 +2758,7 @@ Future<void> logoutAccount() async {
       labelText: label,
       prefixIcon: Icon(icon),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: appSurfaceColor,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -2066,7 +2951,10 @@ const SizedBox(height: 12),
             'Dark mode',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          subtitle: const Text('Comută aplicația în modul întunecat'),
+          subtitle: Text(
+            'Comută aplicația în modul întunecat',
+            style: TextStyle(color: appMutedTextColor),
+          ),
           secondary: const Icon(Icons.dark_mode_outlined, color: primaryColor),
           onChanged: saveDarkMode,
         ),
@@ -2417,86 +3305,225 @@ const SizedBox(height: 12),
 
   Widget buildCart() {
     if (cart.isEmpty) {
-      return const Center(child: Text('Coșul este gol'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withOpacity(0.08),
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 64,
+                  color: primaryColor,
+                ),
+              ),
+              const SizedBox(height: 26),
+              Text(
+                'Coșul tău este gol',
+                style: TextStyle(
+                  color: appTextColor,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Adaugă produse premium și fă pe cineva fericit ✨',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: appMutedTextColor,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final items = cart.entries.toList();
+    final progress = (cartTotal / freeShippingThreshold).clamp(0, 1).toDouble();
+    final remaining = freeShippingThreshold - cartTotal;
+    final shippingCost = cartTotal >= freeShippingThreshold ? 0.0 : 24.9;
+    final finalTotal = (cartTotal + shippingCost - discountValue)
+        .clamp(0, double.infinity)
+        .toDouble();
 
-    return Column(
+    return Stack(
       children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final entry = items[index];
+        ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 295),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: appCardColor,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: appBorderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.local_shipping_outlined, color: primaryColor),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          remaining <= 0
+                              ? 'Ai transport GRATUIT 🎉'
+                              : 'Mai adaugi ${remaining.toStringAsFixed(0)} Lei pentru transport gratuit',
+                          style: TextStyle(
+                            color: appTextColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 10,
+                      backgroundColor: darkMode ? Colors.white12 : Colors.grey.shade300,
+                      color: primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            ...items.map((entry) {
               final key = entry.key;
               final item = entry.value;
               final product = item.product;
-
               final image = product.images.isNotEmpty ? product.images.first : '';
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
+              return Dismissible(
+                key: Key(key),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  alignment: Alignment.centerRight,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                onDismissed: (_) {
+                  HapticFeedback.mediumImpact();
+                  removeFromCart(key);
+                },
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(22),
                   onTap: () => openProduct(product),
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: appCardColor,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: appBorderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(16),
                           child: image.isEmpty
-                              ? Container(width: 68, height: 68, color: Colors.grey.shade200, child: const Icon(Icons.image))
-                              : Image.network(image, width: 68, height: 68, fit: BoxFit.cover),
+                              ? Container(
+                                  width: 90,
+                                  height: 90,
+                                  color: primaryColor.withOpacity(0.08),
+                                  child: const Icon(Icons.image_outlined),
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: image,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(
+                                    width: 90,
+                                    height: 90,
+                                    color: appBorderColor,
+                                  ),
+                                  errorWidget: (_, __, ___) => Container(
+                                    width: 90,
+                                    height: 90,
+                                    color: primaryColor.withOpacity(0.08),
+                                    child: const Icon(Icons.image_outlined),
+                                  ),
+                                ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(product.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Icon(Icons.open_in_new, size: 16, color: Colors.grey.shade500),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              productPriceBlock(
-                                product,
-                                priceSize: 15,
-                                oldPriceSize: 11,
+                              Text(
+                                product.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: appTextColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
                               ),
                               const SizedBox(height: 8),
+                              productPriceBlock(product, priceSize: 15, oldPriceSize: 11),
+                              const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  IconButton.filledTonal(
-                                    onPressed: () => decreaseQuantity(key),
-                                    icon: const Icon(Icons.remove),
-                                    iconSize: 18,
-                                    constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                                  quantityButton(
+                                    icon: Icons.remove,
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      decreaseQuantity(key);
+                                    },
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                                    child: Text(
+                                      '${item.quantity}',
+                                      style: TextStyle(
+                                        color: appTextColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17,
+                                      ),
+                                    ),
                                   ),
-                                  IconButton.filledTonal(
-                                    onPressed: () => increaseQuantity(key),
-                                    icon: const Icon(Icons.add),
-                                    iconSize: 18,
-                                    constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                                  quantityButton(
+                                    icon: Icons.add,
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      increaseQuantity(key);
+                                    },
                                   ),
                                   const Spacer(),
-                                  IconButton(
-                                    onPressed: () => removeFromCart(key),
-                                    icon: const Icon(Icons.delete_outline, color: primaryColor),
-                                  ),
+                                  Icon(Icons.swipe_left_rounded, size: 18, color: appMutedTextColor),
                                 ],
                               ),
                             ],
@@ -2507,46 +3534,198 @@ const SizedBox(height: 12),
                   ),
                 ),
               );
-            },
-          ),
+            }),
+          ],
         ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('${cartTotal.toStringAsFixed(2)} Lei', style: const TextStyle(fontSize: 20, color: primaryColor, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CheckoutPage(
-                          items: cart.values.toList(),
-                          total: cartTotal,
-                          onOrderDone: clearCart,
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  100 + MediaQuery.of(context).padding.bottom,
+                ),
+                decoration: BoxDecoration(
+                  color: darkMode
+                      ? Colors.black.withOpacity(0.80)
+                      : Colors.white.withOpacity(0.88),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: couponController,
+                            style: TextStyle(color: appTextColor),
+                            decoration: InputDecoration(
+                              hintText: 'Cod promo',
+                              hintStyle: TextStyle(color: appMutedTextColor),
+                              filled: true,
+                              fillColor: appSurfaceColor,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: applyCoupon,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text('Aplică'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Subtotal', style: TextStyle(color: appMutedTextColor)),
+                        Text(
+                          '${cartTotal.toStringAsFixed(2)} Lei',
+                          style: TextStyle(color: appTextColor, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Transport', style: TextStyle(color: appMutedTextColor)),
+                        Text(
+                          shippingCost == 0 ? 'GRATUIT' : '${shippingCost.toStringAsFixed(2)} Lei',
+                          style: TextStyle(
+                            color: shippingCost == 0 ? Colors.green : appTextColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (discountValue > 0) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Reducere ($appliedCoupon)', style: TextStyle(color: appMutedTextColor)),
+                          Text(
+                            '-${discountValue.toStringAsFixed(2)} Lei',
+                            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total',
+                          style: TextStyle(
+                            color: appTextColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: finalTotal),
+                          duration: const Duration(milliseconds: 500),
+                          builder: (_, value, __) {
+                            return Text(
+                              '${value.toStringAsFixed(2)} Lei',
+                              style: const TextStyle(
+                                color: primaryColor,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 58,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.heavyImpact();
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CheckoutPage(
+                                items: cart.values.toList(),
+                                total: finalTotal,
+                                onOrderDone: clearCart,
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_outline),
+                            SizedBox(width: 10),
+                            Text(
+                              'Finalizează comanda',
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
-                  child: const Text('Finalizează comanda', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget quantityButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: primaryColor.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: primaryColor),
+      ),
     );
   }
 
@@ -2580,10 +3759,12 @@ const SizedBox(height: 12),
 class StickySearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
+  final Color backgroundColor;
 
   StickySearchHeaderDelegate({
     required this.height,
     required this.child,
+    this.backgroundColor = const Color(0xFFF5F5F5),
   });
 
   @override
@@ -2595,7 +3776,7 @@ class StickySearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Material(
-      color: const Color(0xFFF5F5F5),
+      color: backgroundColor,
       elevation: overlapsContent ? 2 : 0,
       child: child,
     );
@@ -2603,7 +3784,7 @@ class StickySearchHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant StickySearchHeaderDelegate oldDelegate) {
-    return height != oldDelegate.height || child != oldDelegate.child;
+    return height != oldDelegate.height || child != oldDelegate.child || backgroundColor != oldDelegate.backgroundColor;
   }
 }
 
