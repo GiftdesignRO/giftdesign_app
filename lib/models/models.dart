@@ -30,7 +30,6 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
-
     final List<String> uniqueImages = [];
 
     void addImage(dynamic value) {
@@ -135,8 +134,8 @@ class Product {
     final bestDescription = longDesc.isNotEmpty
         ? longDesc
         : shortDesc.isNotEmpty
-            ? shortDesc
-            : 'Descriere indisponibilă momentan';
+        ? shortDesc
+        : 'Descriere indisponibilă momentan';
 
     double readPrice(dynamic value) {
       if (value == null) return 0;
@@ -154,17 +153,13 @@ class Product {
       if (value <= 0) return '';
 
       final fixed = value.toStringAsFixed(2);
-      final clean = fixed.endsWith('.00')
-          ? value.toStringAsFixed(0)
-          : fixed;
+      final clean = fixed.endsWith('.00') ? value.toStringAsFixed(0) : fixed;
 
       return '$clean Lei';
     }
 
     final currentPriceValue = readPrice(
-      json['price_gross'] ??
-          json['price'] ??
-          json['price_net'],
+      json['price_gross'] ?? json['price'] ?? json['price_net'],
     );
 
     final oldPriceValue = readPrice(
@@ -188,13 +183,8 @@ class Product {
           meta['regular_price'],
     );
 
-    final discount =
-    oldPriceValue > currentPriceValue &&
-            currentPriceValue > 0
-        ? (((oldPriceValue - currentPriceValue) /
-                    oldPriceValue) *
-                100)
-            .round()
+    final discount = oldPriceValue > currentPriceValue && currentPriceValue > 0
+        ? (((oldPriceValue - currentPriceValue) / oldPriceValue) * 100).round()
         : 0;
 
     return Product(
@@ -232,15 +222,17 @@ class CartItem {
   double get total => unitPrice * quantity;
 }
 
-
 class CategoryGroup {
   final String title;
   final IconData icon;
   final List<String> subcategories;
 
-  const CategoryGroup({required this.title, required this.icon, required this.subcategories});
+  const CategoryGroup({
+    required this.title,
+    required this.icon,
+    required this.subcategories,
+  });
 }
-
 
 class CategoryData {
   final int id;

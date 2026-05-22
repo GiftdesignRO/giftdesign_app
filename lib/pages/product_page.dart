@@ -34,15 +34,14 @@ class _ProductPageState extends State<ProductPage> {
     isFavorite = widget.isFavorite;
   }
 
-  String get heroTag => widget.product.sku.isNotEmpty
-      ? widget.product.sku
-      : widget.product.title;
+  String get heroTag =>
+      widget.product.sku.isNotEmpty ? widget.product.sku : widget.product.title;
 
   String get productDescription => widget.product.description.isNotEmpty
       ? widget.product.description
       : widget.product.shortDescription.isNotEmpty
-          ? widget.product.shortDescription
-          : 'Descriere indisponibilă momentan.';
+      ? widget.product.shortDescription
+      : 'Descriere indisponibilă momentan.';
 
   void handleAddToCart() {
     HapticFeedback.mediumImpact();
@@ -157,7 +156,8 @@ class _ProductPageState extends State<ProductPage> {
                           fit: BoxFit.cover,
                           fadeInDuration: const Duration(milliseconds: 350),
                           placeholder: (_, __) => imagePlaceholder(height: 390),
-                          errorWidget: (_, __, ___) => imagePlaceholder(height: 390),
+                          errorWidget: (_, __, ___) =>
+                              imagePlaceholder(height: 390),
                         ),
                       ),
                     );
@@ -295,16 +295,14 @@ class _ProductPageState extends State<ProductPage> {
     }
 
     if (widget.product.stock.isNotEmpty) {
-      chips.add(metaChip(Icons.inventory_2_outlined, 'Stoc ${widget.product.stock}'));
+      chips.add(
+        metaChip(Icons.inventory_2_outlined, 'Stoc ${widget.product.stock}'),
+      );
     }
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: chips,
-    );
+    return Wrap(spacing: 8, runSpacing: 8, children: chips);
   }
 
   Widget metaChip(IconData icon, String label) {
@@ -374,7 +372,9 @@ class _ProductPageState extends State<ProductPage> {
                   ? Icons.keyboard_arrow_up_rounded
                   : Icons.keyboard_arrow_down_rounded,
             ),
-            label: Text(descriptionExpanded ? 'Arată mai puțin' : 'Citește mai mult'),
+            label: Text(
+              descriptionExpanded ? 'Arată mai puțin' : 'Citește mai mult',
+            ),
           ),
         ],
       ],
@@ -557,7 +557,10 @@ class _ProductPageState extends State<ProductPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.card_giftcard_rounded, color: primaryColor),
+                        const Icon(
+                          Icons.card_giftcard_rounded,
+                          color: primaryColor,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(

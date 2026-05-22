@@ -265,10 +265,7 @@ class _StatCard extends StatelessWidget {
 class OrderAdminCard extends StatelessWidget {
   final Map<String, dynamic> order;
 
-  const OrderAdminCard({
-    super.key,
-    required this.order,
-  });
+  const OrderAdminCard({super.key, required this.order});
 
   String textValue(dynamic value) => value?.toString() ?? '';
 
@@ -388,10 +385,7 @@ class OrderAdminCard extends StatelessWidget {
             label: 'Livrare',
             value: textValue(order['delivery_method']),
           ),
-          _InfoRow(
-            label: 'Plată',
-            value: textValue(order['payment_method']),
-          ),
+          _InfoRow(label: 'Plată', value: textValue(order['payment_method'])),
           const SizedBox(height: 12),
           const Align(
             alignment: Alignment.centerLeft,
@@ -438,10 +432,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

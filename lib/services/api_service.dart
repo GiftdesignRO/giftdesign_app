@@ -46,11 +46,7 @@ class ApiService {
     return http.post(
       Uri.parse('$apiBaseUrl/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-      }),
+      body: jsonEncode({'name': name, 'email': email, 'password': password}),
     );
   }
 
@@ -61,10 +57,7 @@ class ApiService {
     return http.post(
       Uri.parse('$apiBaseUrl/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
+      body: jsonEncode({'email': email, 'password': password}),
     );
   }
 }

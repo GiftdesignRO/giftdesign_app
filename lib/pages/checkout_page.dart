@@ -43,19 +43,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> loadSavedCheckoutData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    nameController.text = prefs.getString('checkout_name') ?? prefs.getString('user_name') ?? '';
+    nameController.text =
+        prefs.getString('checkout_name') ?? prefs.getString('user_name') ?? '';
     phoneController.text = prefs.getString('checkout_phone') ?? '';
-    emailController.text = prefs.getString('checkout_email') ?? prefs.getString('user_email') ?? '';
+    emailController.text =
+        prefs.getString('checkout_email') ??
+        prefs.getString('user_email') ??
+        '';
     addressController.text = prefs.getString('checkout_address') ?? '';
 
     final savedCounty = prefs.getString('checkout_county');
     final savedCity = prefs.getString('checkout_city');
 
-    if (savedCounty != null && savedCounty.isNotEmpty && romanianCities.containsKey(savedCounty)) {
+    if (savedCounty != null &&
+        savedCounty.isNotEmpty &&
+        romanianCities.containsKey(savedCounty)) {
       selectedCounty = savedCounty;
 
       final cityList = romanianCities[savedCounty] ?? <String>[];
-      if (savedCity != null && savedCity.isNotEmpty && cityList.contains(savedCity)) {
+      if (savedCity != null &&
+          savedCity.isNotEmpty &&
+          cityList.contains(savedCity)) {
         selectedCity = savedCity;
       }
     }
@@ -90,7 +98,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   final Map<String, List<String>> romanianCities = const {
-    'București': ['Sector 1', 'Sector 2', 'Sector 3', 'Sector 4', 'Sector 5', 'Sector 6'],
+    'București': [
+      'Sector 1',
+      'Sector 2',
+      'Sector 3',
+      'Sector 4',
+      'Sector 5',
+      'Sector 6',
+    ],
     'Alba': ['Alba Iulia', 'Aiud', 'Blaj', 'Sebeș'],
     'Arad': ['Arad', 'Ineu', 'Lipova', 'Nădlac'],
     'Argeș': ['Pitești', 'Câmpulung', 'Curtea de Argeș', 'Mioveni'],
@@ -122,15 +137,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.grey.shade300)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: primaryColor, width: 2)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final counties = romanianCities.keys.toList()..sort();
-    final cities = selectedCounty == null ? <String>[] : romanianCities[selectedCounty] ?? <String>[];
+    final cities = selectedCounty == null
+        ? <String>[]
+        : romanianCities[selectedCounty] ?? <String>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -143,41 +166,64 @@ class _CheckoutPageState extends State<CheckoutPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('Date livrare', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Text(
+              'Date livrare',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 14),
             TextFormField(
               controller: nameController,
               decoration: fieldDecoration('Nume și prenume'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Completează numele' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Completează numele'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
               decoration: fieldDecoration('Telefon'),
-              validator: (value) => value == null || value.trim().length < 8 ? 'Completează telefonul' : null,
+              validator: (value) => value == null || value.trim().length < 8
+                  ? 'Completează telefonul'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: fieldDecoration('Email'),
-              validator: (value) => value == null || !value.contains('@') ? 'Email invalid' : null,
+              validator: (value) => value == null || !value.contains('@')
+                  ? 'Email invalid'
+                  : null,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: selectedCounty,
               decoration: fieldDecoration('Județ'),
-              items: counties.map((county) => DropdownMenuItem(value: county, child: Text(county))).toList(),
-              onChanged: (value) => setState(() { selectedCounty = value; selectedCity = null; }),
+              items: counties
+                  .map(
+                    (county) =>
+                        DropdownMenuItem(value: county, child: Text(county)),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() {
+                selectedCounty = value;
+                selectedCity = null;
+              }),
               validator: (value) => value == null ? 'Alege județul' : null,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: selectedCity,
               decoration: fieldDecoration('Oraș / Localitate'),
-              items: cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
-              onChanged: selectedCounty == null ? null : (value) => setState(() => selectedCity = value),
+              items: cities
+                  .map(
+                    (city) => DropdownMenuItem(value: city, child: Text(city)),
+                  )
+                  .toList(),
+              onChanged: selectedCounty == null
+                  ? null
+                  : (value) => setState(() => selectedCity = value),
               validator: (value) => value == null ? 'Alege orașul' : null,
             ),
             const SizedBox(height: 12),
@@ -185,10 +231,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
               controller: addressController,
               maxLines: 2,
               decoration: fieldDecoration('Adresă completă'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Completează adresa' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Completează adresa'
+                  : null,
             ),
             const SizedBox(height: 20),
-            const Text('Livrare', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Livrare',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             RadioListTile<String>(
               value: 'Curier rapid',
               groupValue: deliveryMethod,
@@ -203,7 +254,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
               title: const Text('Ridicare personală'),
               onChanged: (value) => setState(() => deliveryMethod = value!),
             ),
-            const Text('Plată', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Plată',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             RadioListTile<String>(
               value: 'Ramburs',
               groupValue: paymentMethod,
@@ -225,23 +279,50 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Sumar comandă', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
-                    ...widget.items.map((item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text('${item.quantity} x ${item.product.title}', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          Text('${item.total.toStringAsFixed(2)} Lei'),
-                        ],
+                    const Text(
+                      'Sumar comandă',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    )),
+                    ),
+                    const SizedBox(height: 10),
+                    ...widget.items.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${item.quantity} x ${item.product.title}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text('${item.total.toStringAsFixed(2)} Lei'),
+                          ],
+                        ),
+                      ),
+                    ),
                     const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text('${widget.total.toStringAsFixed(2)} Lei', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                        const Text(
+                          'Total',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${widget.total.toStringAsFixed(2)} Lei',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -252,7 +333,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
             SizedBox(
               height: 54,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () async {
                   if (!_formKey.currentState!.validate()) return;
 
@@ -261,9 +345,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                     final response = await http.post(
                       Uri.parse('https://giftdesign-api.onrender.com/orders'),
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
+                      headers: {'Content-Type': 'application/json'},
                       body: jsonEncode({
                         'customer': {
                           'name': nameController.text.trim(),
@@ -325,13 +407,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     if (!mounted) return;
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Eroare server: $e'),
-                      ),
+                      SnackBar(content: Text('Eroare server: $e')),
                     );
                   }
                 },
-                child: const Text('Trimite comanda', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: const Text(
+                  'Trimite comanda',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
             ),
           ],

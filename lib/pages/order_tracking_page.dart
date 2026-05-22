@@ -58,9 +58,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
 
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Introdu numărul comenzii sau AWB-ul'),
-        ),
+        const SnackBar(content: Text('Introdu numărul comenzii sau AWB-ul')),
       );
       return;
     }
@@ -197,7 +195,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                   color: primaryColor.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.inventory_outlined, color: primaryColor),
+                child: const Icon(
+                  Icons.inventory_outlined,
+                  color: primaryColor,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -245,10 +246,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     );
   }
 
-  Widget trackingStep({
-    required _TrackingStep step,
-    required bool isLast,
-  }) {
+  Widget trackingStep({required _TrackingStep step, required bool isLast}) {
     final color = step.done ? primaryColor : Colors.grey.shade300;
 
     return Row(
@@ -280,12 +278,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 size: step.active ? 22 : 19,
               ),
             ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 48,
-                color: color,
-              ),
+            if (!isLast) Container(width: 2, height: 48, color: color),
           ],
         ),
         const SizedBox(width: 14),
@@ -306,10 +299,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                 const SizedBox(height: 4),
                 Text(
                   step.subtitle,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    height: 1.25,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
                 ),
               ],
             ),
