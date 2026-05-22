@@ -31,6 +31,67 @@ class _ProductPageState extends State<ProductPage> {
     isFavorite = widget.isFavorite;
   }
 
+
+  Widget priceSection() {
+    final product = widget.product;
+    final hasDiscount =
+        product.oldPrice.isNotEmpty && product.discountPercent > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasDiscount) ...[
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  product.oldPrice,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.lineThrough,
+                    decorationThickness: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '-${product.discountPercent}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+        ],
+        Text(
+          product.price,
+          style: TextStyle(
+            color: hasDiscount ? Colors.red : primaryColor,
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<String> images = widget.product.images.isNotEmpty
@@ -68,8 +129,45 @@ class _ProductPageState extends State<ProductPage> {
               itemBuilder: (context, index) {
                 final image = images[index];
                 return image.isEmpty
-                    ? Container(color: Colors.grey.shade200, child: const Center(child: Icon(Icons.image, size: 80)))
-                    : Image.network(image, width: double.infinity, fit: BoxFit.cover);
+                    ? Container(
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: Icon(Icons.image, size: 80),
+                        ),
+                      )
+                    : Hero(
+                        tag: widget.product.sku.isNotEmpty
+                            ? widget.product.sku
+                            : widget.product.title,
+                        child: Image.network(
+                          image,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          frameBuilder: (
+                            context,
+                            child,
+                            frame,
+                            wasSynchronouslyLoaded,
+                          ) {
+                            if (wasSynchronouslyLoaded) {
+                              return child;
+                            }
+
+                            return AnimatedOpacity(
+                              opacity: frame == null ? 0 : 1,
+                              duration: const Duration(milliseconds: 450),
+                              curve: Curves.easeOut,
+                              child: child,
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: Icon(Icons.image, size: 80),
+                            ),
+                          ),
+                        ),
+                      );
               },
             ),
           ),
@@ -83,11 +181,43 @@ class _ProductPageState extends State<ProductPage> {
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.product.category, style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.product.category,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (widget.product.discountPercent > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: const Text(
+                        'REDUCERE',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(height: 8),
               Text(widget.product.title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 14),
-              Text(widget.product.price, style: const TextStyle(color: primaryColor, fontSize: 30, fontWeight: FontWeight.bold)),
+              priceSection(),
               const SizedBox(height: 12),
               if (widget.product.sku.isNotEmpty) Text('SKU: ${widget.product.sku}'),
               if (widget.product.stock.isNotEmpty) Text('Stoc: ${widget.product.stock}'),

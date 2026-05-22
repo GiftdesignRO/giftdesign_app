@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 class Product {
   final String title;
   final String price;
+  final String oldPrice;
+  final int discountPercent;
   final String description;
   final String shortDescription;
   final List<String> images;
@@ -15,6 +17,8 @@ class Product {
   Product({
     required this.title,
     required this.price,
+    required this.oldPrice,
+    required this.discountPercent,
     required this.description,
     required this.shortDescription,
     required this.images,
@@ -26,6 +30,7 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+
     final List<String> uniqueImages = [];
 
     void addImage(dynamic value) {
@@ -133,9 +138,70 @@ class Product {
             ? shortDesc
             : 'Descriere indisponibilă momentan';
 
+    double readPrice(dynamic value) {
+      if (value == null) return 0;
+
+      final cleaned = value
+          .toString()
+          .replaceAll(',', '.')
+          .replaceAll(RegExp(r'[^0-9.]'), '')
+          .trim();
+
+      return double.tryParse(cleaned) ?? 0;
+    }
+
+    String formatPrice(double value) {
+      if (value <= 0) return '';
+
+      final fixed = value.toStringAsFixed(2);
+      final clean = fixed.endsWith('.00')
+          ? value.toStringAsFixed(0)
+          : fixed;
+
+      return '$clean Lei';
+    }
+
+    final currentPriceValue = readPrice(
+      json['price_gross'] ??
+          json['price'] ??
+          json['price_net'],
+    );
+
+    final oldPriceValue = readPrice(
+      json['old_price_gross'] ??
+          json['price_old_gross'] ??
+          json['price_gross_old'] ??
+          json['old_price'] ??
+          json['price_old'] ??
+          json['compare_price'] ??
+          json['compare_at_price'] ??
+          json['regular_price'] ??
+          json['base_price'] ??
+          json['rrp'] ??
+          json['recommended_price'] ??
+          json['list_price'] ??
+          meta['old_price_gross'] ??
+          meta['price_old_gross'] ??
+          meta['old_price'] ??
+          meta['price_old'] ??
+          meta['compare_price'] ??
+          meta['regular_price'],
+    );
+
+    final discount =
+    oldPriceValue > currentPriceValue &&
+            currentPriceValue > 0
+        ? (((oldPriceValue - currentPriceValue) /
+                    oldPriceValue) *
+                100)
+            .round()
+        : 0;
+
     return Product(
       title: json['name']?.toString() ?? 'Produs GiftDesign',
-      price: '${json['price_gross'] ?? json['price'] ?? ''} Lei',
+      price: formatPrice(currentPriceValue),
+      oldPrice: discount > 0 ? formatPrice(oldPriceValue) : '',
+      discountPercent: discount,
       description: bestDescription,
       shortDescription: shortDesc,
       images: uniqueImages,

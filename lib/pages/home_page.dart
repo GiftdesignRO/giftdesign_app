@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
@@ -32,6 +34,7 @@ class _HomePageState extends State<HomePage> {
   int analyticsProductViews = 0;
   int analyticsAddToCart = 0;
   int analyticsSearches = 0;
+  bool cartBounce = false;
 
   final accountNameController = TextEditingController();
   final accountEmailController = TextEditingController();
@@ -222,27 +225,41 @@ Future<void> logoutAccount() async {
 
   void addToCart(Product product) {
     trackAddToCart();
+
     final key = cartKey(product);
+
     setState(() {
       if (cart.containsKey(key)) {
         cart[key]!.quantity++;
       } else {
         cart[key] = CartItem(product: product);
       }
+
+      cartBounce = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 420), () {
+      if (!mounted) return;
+
+      setState(() {
+        cartBounce = false;
+      });
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${product.title} adăugat în coș'),
         duration: const Duration(seconds: 2),
-        action: SnackBarAction(
-          label: 'Vezi coșul',
-          onPressed: () {
-            setState(() {
-              selectedIndex = 3;
-            });
-          },
-        ),
+        action: selectedIndex == 3
+            ? null
+            : SnackBarAction(
+                label: 'Vezi coșul',
+                onPressed: () {
+                  setState(() {
+                    selectedIndex = 3;
+                  });
+                },
+              ),
       ),
     );
   }
@@ -388,12 +405,18 @@ Future<void> logoutAccount() async {
               color: primaryColor.withOpacity(0.08),
               child: Icon(fallbackIcon, color: primaryColor, size: 30),
             )
-          : Image.network(
-              imageUrl,
+          : CachedNetworkImage(
+              imageUrl: imageUrl,
               height: height,
               width: width,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              fadeInDuration: const Duration(milliseconds: 300),
+              placeholder: (_, __) => Container(
+                height: height,
+                width: width,
+                color: Colors.grey.shade200,
+              ),
+              errorWidget: (_, __, ___) => Container(
                 height: height,
                 width: width,
                 color: primaryColor.withOpacity(0.08),
@@ -571,17 +594,32 @@ Future<void> logoutAccount() async {
             label: 'Favorite',
           ),
           BottomNavigationBarItem(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shopping_cart),
-                if (cart.isNotEmpty)
-                  Positioned(
-                    right: -8,
-                    top: -6,
-                    child: badge(cartItemCount),
+            icon: AnimatedScale(
+              scale: cartBounce ? 1.25 : 1,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.elasticOut,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedRotation(
+                    turns: cartBounce ? 0.035 : 0,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOut,
+                    child: const Icon(Icons.shopping_cart),
                   ),
-              ],
+                  if (cart.isNotEmpty)
+                    Positioned(
+                      right: -8,
+                      top: -6,
+                      child: AnimatedScale(
+                        scale: cartBounce ? 1.18 : 1,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.elasticOut,
+                        child: badge(cartItemCount),
+                      ),
+                    ),
+                ],
+              ),
             ),
             label: 'Coș',
           ),
@@ -633,49 +671,93 @@ Future<void> logoutAccount() async {
 
 
   Widget buildHomeSkeleton() {
-    Widget skeletonBox({required double height, double width = double.infinity, double radius = 16}) {
+    Widget skeletonBox({
+      required double height,
+      double width = double.infinity,
+      double radius = 16,
+    }) {
       return Container(
         height: height,
         width: width,
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(radius),
         ),
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        skeletonBox(height: 55, radius: 14),
-        const SizedBox(height: 18),
-        skeletonBox(height: 112, radius: 22),
-        const SizedBox(height: 22),
-        SizedBox(
-          height: 116,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
+    Widget productSkeletonCard() {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            skeletonBox(height: 155, radius: 0),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    skeletonBox(height: 12, width: 82, radius: 8),
+                    const SizedBox(height: 9),
+                    skeletonBox(height: 15, width: double.infinity, radius: 8),
+                    const SizedBox(height: 7),
+                    skeletonBox(height: 15, width: 120, radius: 8),
+                    const Spacer(),
+                    skeletonBox(height: 22, width: 96, radius: 8),
+                    const SizedBox(height: 10),
+                    skeletonBox(height: 40, radius: 13),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          skeletonBox(height: 55, radius: 14),
+          const SizedBox(height: 18),
+          skeletonBox(height: 112, radius: 22),
+          const SizedBox(height: 22),
+          SizedBox(
+            height: 116,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) =>
+                  skeletonBox(height: 116, width: 118, radius: 18),
+            ),
+          ),
+          const SizedBox(height: 24),
+          skeletonBox(height: 28, width: 160, radius: 8),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: 4,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, __) => skeletonBox(height: 116, width: 118, radius: 18),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              mainAxisExtent: 365,
+            ),
+            itemBuilder: (_, __) => productSkeletonCard(),
           ),
-        ),
-        const SizedBox(height: 24),
-        skeletonBox(height: 28, width: 160, radius: 8),
-        const SizedBox(height: 14),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 4,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 14,
-            mainAxisExtent: 365,
-          ),
-          itemBuilder: (_, __) => skeletonBox(height: 365, radius: 20),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1104,11 +1186,18 @@ Future<void> logoutAccount() async {
                                 color: Colors.grey.shade200,
                                 child: const Icon(Icons.image_outlined),
                               )
-                            : Image.network(
-                                image,
+                            : CachedNetworkImage(
+                                imageUrl: image,
                                 width: 72,
                                 height: 88,
                                 fit: BoxFit.cover,
+                                fadeInDuration: const Duration(milliseconds: 250),
+                                placeholder: (_, __) => Container(
+                                  width: 72,
+                                  height: 88,
+                                  color: Colors.grey.shade200,
+                                ),
+                                errorWidget: (_, __, ___) => const Icon(Icons.image_outlined),
                               ),
                       ),
                       const SizedBox(width: 10),
@@ -1123,12 +1212,10 @@ Future<void> logoutAccount() async {
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             const Spacer(),
-                            Text(
-                              product.price,
-                              style: const TextStyle(
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            productPriceBlock(
+                              product,
+                              priceSize: 14,
+                              oldPriceSize: 11,
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -1353,6 +1440,74 @@ Future<void> logoutAccount() async {
   }
 
 
+
+  Widget productPriceBlock(
+    Product product, {
+    double priceSize = 18,
+    double oldPriceSize = 12,
+    CrossAxisAlignment alignment = CrossAxisAlignment.start,
+  }) {
+    final hasDiscount =
+        product.oldPrice.isNotEmpty && product.discountPercent > 0;
+
+    return Column(
+      crossAxisAlignment: alignment,
+      children: [
+        if (hasDiscount) ...[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  product.oldPrice,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: oldPriceSize,
+                    decoration: TextDecoration.lineThrough,
+                    decorationThickness: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.red.shade100),
+                ),
+                child: Text(
+                  '-${product.discountPercent}%',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+        ],
+        Text(
+          product.price,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: hasDiscount ? Colors.red : primaryColor,
+            fontWeight: FontWeight.w900,
+            fontSize: priceSize,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget productCard(Product product) {
     final isFavorite = favorites.contains(product);
     final image = product.images.isNotEmpty ? product.images.first : '';
@@ -1386,16 +1541,29 @@ Future<void> logoutAccount() async {
                         color: Colors.grey.shade200,
                         child: const Center(child: Icon(Icons.image_outlined)),
                       )
-                    : Image.network(
-                        image,
-                        height: 155,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                    : Hero(
+                        tag: product.sku.isNotEmpty
+                            ? product.sku
+                            : product.title,
+                        child: CachedNetworkImage(
+                          imageUrl: image,
                           height: 155,
                           width: double.infinity,
-                          color: Colors.grey.shade200,
-                          child: const Center(child: Icon(Icons.image_outlined)),
+                          fit: BoxFit.cover,
+                          fadeInDuration: const Duration(milliseconds: 350),
+                          placeholder: (_, __) => Container(
+                            height: 155,
+                            width: double.infinity,
+                            color: Colors.grey.shade200,
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            height: 155,
+                            width: double.infinity,
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: Icon(Icons.image_outlined),
+                            ),
+                          ),
                         ),
                       ),
                 Positioned.fill(
@@ -1413,7 +1581,23 @@ Future<void> logoutAccount() async {
                     ),
                   ),
                 ),
-                if (isNew)
+                if (product.discountPercent > 0)
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '-${product.discountPercent}%',
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+                else if (isNew)
                   Positioned(
                     left: 10,
                     top: 10,
@@ -1479,10 +1663,7 @@ Future<void> logoutAccount() async {
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, height: 1.2),
                     ),
                     const Spacer(),
-                    Text(
-                      product.price,
-                      style: const TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 18),
-                    ),
+                    productPriceBlock(product),
                     const SizedBox(height: 9),
                     SizedBox(
                       width: double.infinity,
@@ -1546,125 +1727,139 @@ Future<void> logoutAccount() async {
         final image =
             product.images.isNotEmpty ? product.images.first : '';
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        return InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => openProduct(product),
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: image.isEmpty
-                      ? Container(
-                          width: 72,
-                          height: 72,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image),
-                        )
-                      : Image.network(
-                          image,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                        ),
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-
-                      Text(
-                        product.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        product.price,
-                        style: const TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                addToCart(product);
-                              },
-
-                              icon: const Icon(
-                                Icons.shopping_cart_outlined,
-                                size: 18,
-                              ),
-
-                              label: const Text('Adaugă'),
-
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    primaryColor,
-                                foregroundColor:
-                                    Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-
-                                shape:
-                                    RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                          12),
-                                ),
-                              ),
-                            ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: image.isEmpty
+                        ? Container(
+                            width: 72,
+                            height: 72,
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image),
+                          )
+                        : Image.network(
+                            image,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
                           ),
-
-                          const SizedBox(width: 10),
-
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius:
-                                  BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              onPressed: () =>
-                                  toggleFavorite(product),
-
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.red,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
-                ),
-              ],
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+
+                        Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+
+                            Expanded(
+                              child: Text(
+                                product.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            Icon(
+                              Icons.open_in_new,
+                              size: 16,
+                              color: Colors.grey.shade500,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        productPriceBlock(product),
+
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
+
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  addToCart(product);
+                                },
+
+                                icon: const Icon(
+                                  Icons.shopping_cart_outlined,
+                                  size: 18,
+                                ),
+
+                                label: const Text('Adaugă'),
+
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      primaryColor,
+                                  foregroundColor:
+                                      Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+
+                                  shape:
+                                      RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(
+                                            12),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius:
+                                    BorderRadius.circular(12),
+                              ),
+                              child: IconButton(
+                                onPressed: () =>
+                                    toggleFavorite(product),
+
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2273,7 +2468,11 @@ const SizedBox(height: 12),
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text(product.price, style: const TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                              productPriceBlock(
+                                product,
+                                priceSize: 15,
+                                oldPriceSize: 11,
+                              ),
                               const SizedBox(height: 8),
                               Row(
                                 children: [
@@ -2361,7 +2560,11 @@ const SizedBox(height: 12),
             ? const Icon(Icons.image)
             : Image.network(image, width: 60, height: 60, fit: BoxFit.cover),
         title: Text(product.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(product.price, style: const TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+        subtitle: productPriceBlock(
+          product,
+          priceSize: 15,
+          oldPriceSize: 11,
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
