@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> items;
@@ -344,8 +345,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     await saveCheckoutData();
 
                     final response = await http.post(
-                      Uri.parse('https://giftdesign-api.onrender.com/orders'),
-                      headers: {'Content-Type': 'application/json'},
+  Uri.parse('$apiBaseUrl/orders'),
+  headers: await ApiService.authHeaders(),
                       body: jsonEncode({
                         'customer': {
                           'name': nameController.text.trim(),

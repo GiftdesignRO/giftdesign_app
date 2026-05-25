@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import '../core/constants.dart';
+import '../core/cart_manager.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -336,6 +337,7 @@ class _HomePageState extends State<HomePage> {
     categoriesFuture = fetchCategories();
     loadSavedUser();
     loadSavedFavorites();
+    loadSavedCart();
     loadPhase3Settings();
     startHeroAutoSlide();
   }
@@ -390,11 +392,18 @@ class _HomePageState extends State<HomePage> {
   Future<void> logoutAccount() async {
     await SessionService.clear();
 
+    if (!mounted) return;
+
     setState(() {
       loggedUserName = null;
       loggedUserEmail = null;
       accountMode = 'menu';
+      selectedIndex = 4;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Te-ai delogat cu succes')),
+    );
   }
 
   Future<void> loadSavedFavorites() async {
@@ -426,6 +435,22 @@ class _HomePageState extends State<HomePage> {
   Future<void> saveFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favorite_product_keys', favoriteKeys.toList());
+  }
+
+  Future<void> loadSavedCart() async {
+    final savedCart = await CartManager.loadCart();
+
+    if (!mounted) return;
+
+    setState(() {
+      cart
+        ..clear()
+        ..addAll(savedCart);
+    });
+  }
+
+  Future<void> saveCart() async {
+    await CartManager.saveCart(cart);
   }
 
   Future<void> loadPhase3Settings() async {
@@ -611,6 +636,8 @@ class _HomePageState extends State<HomePage> {
       cartBounce = true;
     });
 
+    saveCart();
+
     Future.delayed(const Duration(milliseconds: 420), () {
       if (!mounted) return;
 
@@ -639,6 +666,7 @@ class _HomePageState extends State<HomePage> {
 
   void increaseQuantity(String key) {
     setState(() => cart[key]?.quantity++);
+    saveCart();
   }
 
   void decreaseQuantity(String key) {
@@ -651,10 +679,13 @@ class _HomePageState extends State<HomePage> {
         item.quantity--;
       }
     });
+
+    saveCart();
   }
 
   void removeFromCart(String key) {
     setState(() => cart.remove(key));
+    saveCart();
   }
 
   void clearCart() {
@@ -664,6 +695,8 @@ class _HomePageState extends State<HomePage> {
       appliedCoupon = '';
       couponController.clear();
     });
+
+    CartManager.clearCart();
   }
 
   void applyCoupon() {
@@ -3368,7 +3401,12 @@ class _HomePageState extends State<HomePage> {
 
     if (loggedUserEmail != null) {
       return ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          170 + MediaQuery.of(context).padding.bottom,
+        ),
         children: [
           const SizedBox(height: 30),
           const Icon(Icons.account_circle, size: 90, color: primaryColor),
@@ -3382,7 +3420,27 @@ class _HomePageState extends State<HomePage> {
           Text(
             loggedUserEmail ?? '',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 15),
+            style: TextStyle(color: appMutedTextColor, fontSize: 15),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: logoutAccount,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Delogare'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 28),
 
@@ -3430,7 +3488,7 @@ class _HomePageState extends State<HomePage> {
             child: OutlinedButton.icon(
               onPressed: logoutAccount,
               icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
+              label: const Text('Delogare cont'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: primaryColor,
                 side: const BorderSide(color: primaryColor),
@@ -3449,7 +3507,12 @@ class _HomePageState extends State<HomePage> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        170 + MediaQuery.of(context).padding.bottom,
+      ),
       children: [
         const SizedBox(height: 18),
         const Icon(

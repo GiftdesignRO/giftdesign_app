@@ -4,12 +4,28 @@ import 'package:http/http.dart' as http;
 
 import '../core/constants.dart';
 import '../models/models.dart';
+import 'session_service.dart';
 
 class ApiService {
   const ApiService._();
 
+  static Future<Map<String, String>> authHeaders() async {
+    final user = await SessionService.loadUser();
+
+    final token = user['token'];
+
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
+    };
+  }
+
   static Future<List<Product>> fetchProducts() async {
-    final response = await http.get(Uri.parse('$apiBaseUrl/products'));
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/products'),
+      headers: await authHeaders(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Nu am putut încărca produsele din MerchantPro');
@@ -22,7 +38,10 @@ class ApiService {
   }
 
   static Future<List<CategoryData>> fetchCategories() async {
-    final response = await http.get(Uri.parse('$apiBaseUrl/categories'));
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/categories'),
+      headers: await authHeaders(),
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Nu am putut încărca categoriile din MerchantPro');
@@ -46,7 +65,11 @@ class ApiService {
     return http.post(
       Uri.parse('$apiBaseUrl/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
     );
   }
 
@@ -57,7 +80,10 @@ class ApiService {
     return http.post(
       Uri.parse('$apiBaseUrl/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+      }),
     );
   }
 }
