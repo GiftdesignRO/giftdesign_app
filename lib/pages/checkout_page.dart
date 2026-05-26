@@ -163,9 +163,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
         foregroundColor: Colors.black,
       ),
       body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+  key: _formKey,
+  child: ListView(
+    padding: const EdgeInsets.fromLTRB(
+      16,
+      16,
+      16,
+      90,
+    ),
           children: [
             const Text(
               'Date livrare',
