@@ -16,6 +16,8 @@ import 'checkout_page.dart';
 import 'product_page.dart';
 import 'admin_orders_page.dart';
 import 'order_tracking_page.dart';
+import 'activity_page.dart';
+import 'my_orders_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -65,6 +67,8 @@ class _HomePageState extends State<HomePage> {
   final Set<Product> favorites = {};
   final Set<String> favoriteKeys = {};
   final List<Product> recentlyViewed = [];
+  final List<Product> addedToCartHistory = [];
+  final List<String> searchHistory = [];
 
   static const List<CategoryGroup> siteCategories = [
     CategoryGroup(
@@ -454,17 +458,77 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadPhase3Settings() async {
-    final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
+
+  final savedViewedKeys =
+      prefs.getStringList('analytics_recently_viewed') ?? [];
+
+  final savedCartKeys =
+      prefs.getStringList('analytics_added_to_cart_history') ?? [];
+
+  final savedSearchHistory =
+      prefs.getStringList('analytics_search_history') ?? [];
+
+  try {
+    final products = await productsFuture;
 
     if (!mounted) return;
 
     setState(() {
       darkMode = prefs.getBool('dark_mode') ?? false;
-      analyticsProductViews = prefs.getInt('analytics_product_views') ?? 0;
-      analyticsAddToCart = prefs.getInt('analytics_add_to_cart') ?? 0;
-      analyticsSearches = prefs.getInt('analytics_searches') ?? 0;
+
+      analyticsProductViews =
+          prefs.getInt('analytics_product_views') ?? 0;
+
+      analyticsAddToCart =
+          prefs.getInt('analytics_add_to_cart') ?? 0;
+
+      analyticsSearches =
+          prefs.getInt('analytics_searches') ?? 0;
+
+      recentlyViewed
+        ..clear()
+        ..addAll(
+          savedViewedKeys
+              .map((key) => products.where((p) => cartKey(p) == key).toList())
+              .where((list) => list.isNotEmpty)
+              .map((list) => list.first),
+        );
+
+      addedToCartHistory
+        ..clear()
+        ..addAll(
+          savedCartKeys
+              .map((key) => products.where((p) => cartKey(p) == key).toList())
+              .where((list) => list.isNotEmpty)
+              .map((list) => list.first),
+        );
+
+      searchHistory
+        ..clear()
+        ..addAll(savedSearchHistory);
+    });
+  } catch (_) {
+    if (!mounted) return;
+
+    setState(() {
+      darkMode = prefs.getBool('dark_mode') ?? false;
+
+      analyticsProductViews =
+          prefs.getInt('analytics_product_views') ?? 0;
+
+      analyticsAddToCart =
+          prefs.getInt('analytics_add_to_cart') ?? 0;
+
+      analyticsSearches =
+          prefs.getInt('analytics_searches') ?? 0;
+
+      searchHistory
+        ..clear()
+        ..addAll(savedSearchHistory);
     });
   }
+}
 
   void startHeroAutoSlide() {
     heroTimer = Timer.periodic(const Duration(seconds: 4), (_) {
@@ -490,26 +554,61 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> saveAnalytics() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('analytics_product_views', analyticsProductViews);
-    await prefs.setInt('analytics_add_to_cart', analyticsAddToCart);
-    await prefs.setInt('analytics_searches', analyticsSearches);
-  }
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.setInt('analytics_product_views', analyticsProductViews);
+  await prefs.setInt('analytics_add_to_cart', analyticsAddToCart);
+  await prefs.setInt('analytics_searches', analyticsSearches);
+
+  await prefs.setStringList(
+    'analytics_recently_viewed',
+    recentlyViewed.map((p) => cartKey(p)).toList(),
+  );
+
+  await prefs.setStringList(
+    'analytics_added_to_cart_history',
+    addedToCartHistory.map((p) => cartKey(p)).toList(),
+  );
+
+  await prefs.setStringList(
+    'analytics_search_history',
+    searchHistory,
+  );
+}
 
   void trackProductView() {
     analyticsProductViews++;
     saveAnalytics();
   }
 
-  void trackAddToCart() {
-    analyticsAddToCart++;
-    saveAnalytics();
+  void trackAddToCart(Product product) {
+  analyticsAddToCart++;
+
+  addedToCartHistory.removeWhere(
+    (p) => p.sku == product.sku,
+  );
+
+  addedToCartHistory.insert(0, product);
+
+  saveAnalytics();
+}
+
+  void trackSearch(String query) {
+  analyticsSearches++;
+
+  final text = query.trim();
+
+  if (text.isNotEmpty) {
+    searchHistory.remove(text);
+    searchHistory.insert(0, text);
+
+    if (searchHistory.length > 20) {
+      searchHistory.removeLast();
+    }
   }
 
-  void trackSearch() {
-    analyticsSearches++;
-    saveAnalytics();
-  }
+  saveAnalytics();
+}
 
   Color get appBackgroundColor =>
       darkMode ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5);
@@ -621,8 +720,115 @@ class _HomePageState extends State<HomePage> {
     Overlay.of(context).insert(entry);
   }
 
+  Future<void> reorderOrderItems(List<dynamic> orderItems) async {
+    if (orderItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comanda nu are produse salvate.')),
+      );
+      return;
+    }
+
+    try {
+      final products = await productsFuture;
+      var addedCount = 0;
+      final missingProducts = <String>[];
+
+      setState(() {
+        for (final item in orderItems) {
+          if (item is! Map) continue;
+
+          final sku = (item['sku'] ?? '').toString().trim();
+          final title = (item['title'] ?? '').toString().trim();
+          final quantity = int.tryParse((item['quantity'] ?? 1).toString()) ?? 1;
+
+          Product? matchedProduct;
+
+          for (final product in products) {
+            final productSku = product.sku.trim();
+            final productTitle = product.title.trim();
+
+            final skuMatches =
+                sku.isNotEmpty && productSku.isNotEmpty && productSku == sku;
+
+            final titleMatches =
+                title.isNotEmpty &&
+                productTitle.toLowerCase() == title.toLowerCase();
+
+            if (skuMatches || titleMatches) {
+              matchedProduct = product;
+              break;
+            }
+          }
+
+          if (matchedProduct == null) {
+            if (title.isNotEmpty) missingProducts.add(title);
+            return;
+          }
+
+          final key = cartKey(matchedProduct);
+
+          if (cart.containsKey(key)) {
+            cart[key]!.quantity += quantity;
+          } else {
+            cart[key] = CartItem(
+              product: matchedProduct,
+              quantity: quantity,
+            );
+          }
+
+          addedCount += quantity;
+        }
+
+        cartBounce = true;
+        selectedIndex = 3;
+      });
+
+      await saveCart();
+
+      Future.delayed(const Duration(milliseconds: 420), () {
+        if (!mounted) return;
+
+        setState(() {
+          cartBounce = false;
+        });
+      });
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            addedCount > 0
+                ? '$addedCount produse au fost adăugate în coș.'
+                : 'Nu am găsit produse disponibile pentru această comandă.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      if (missingProducts.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unele produse nu mai sunt disponibile: ${missingProducts.take(2).join(', ')}',
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nu am putut reface comanda: $error')),
+      );
+    }
+  }
+
   void addToCart(Product product) {
-    trackAddToCart();
+    trackAddToCart(product);
 
     final key = cartKey(product);
 
@@ -1897,7 +2103,7 @@ class _HomePageState extends State<HomePage> {
         style: TextStyle(color: appTextColor),
         onChanged: (value) {
           if (value.trim().isNotEmpty) {
-            trackSearch();
+            trackSearch(value);
           }
 
           setState(() {
@@ -3612,6 +3818,63 @@ class _HomePageState extends State<HomePage> {
             onTap: () {
               Navigator.push(
                 context,
+                MaterialPageRoute(
+                  builder: (_) => MyOrdersPage(
+                    onReorder: reorderOrderItems,
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.receipt_long_outlined,
+                    color: primaryColor,
+                    size: 34,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Comenzile mele',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Vezi istoricul comenzilor tale și statusul lor.',
+                          style: TextStyle(color: appMutedTextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: primaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          color: appCardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              Navigator.push(
+                context,
                 MaterialPageRoute(builder: (_) => const OrderTrackingPage()),
               );
             },
@@ -3659,51 +3922,104 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget analyticsDashboard() {
-    return Card(
-      color: appCardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Analytics',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
+  return Card(
+    color: appCardColor,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Analytics',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ActivityPage(
+                          title: 'Produse vizualizate',
+                          products: recentlyViewed,
+                          onProductTap: openProduct,
+                          onSearchTap: (_) {},
+                        ),
+                      ),
+                    );
+                  },
                   child: analyticsTile(
                     icon: Icons.visibility_outlined,
                     label: 'Vizualizări',
                     value: analyticsProductViews.toString(),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ActivityPage(
+                          title: 'Adăugate în coș',
+                          products: addedToCartHistory,
+                          onProductTap: openProduct,
+                          onSearchTap: (_) {},
+                        ),
+                      ),
+                    );
+                  },
                   child: analyticsTile(
                     icon: Icons.shopping_cart_outlined,
                     label: 'Add to cart',
                     value: analyticsAddToCart.toString(),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ActivityPage(
+                          title: 'Căutări',
+                          searches: searchHistory,
+                          onProductTap: (_) {},
+                          onSearchTap: (query) {
+                            setState(() {
+                              selectedIndex = 0;
+                              searchQuery = query;
+                              searchController.text = query;
+                            });
+
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  },
                   child: analyticsTile(
                     icon: Icons.search,
                     label: 'Căutări',
                     value: analyticsSearches.toString(),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget analyticsTile({
     required IconData icon,
@@ -3911,7 +4227,10 @@ class _HomePageState extends State<HomePage> {
                 final decoded = jsonDecode(response.body);
 
                 if (response.statusCode == 200) {
-                  await saveUserSession(decoded['user']);
+                  final userData = Map<String, dynamic>.from(decoded['user']);
+                  userData['token'] = decoded['token'];
+
+                  await saveUserSession(userData);
 
                   if (!mounted) return;
 

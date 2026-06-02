@@ -13,6 +13,8 @@ class ApiService {
     final user = await SessionService.loadUser();
 
     final token = user['token'];
+    // print('🔥🔥🔥 USER DATA: $user');
+    // print('🔥🔥🔥 TOKEN: $token');
 
     return {
       'Content-Type': 'application/json',
@@ -85,5 +87,21 @@ class ApiService {
         'password': password,
       }),
     );
+  }
+
+
+  static Future<List<dynamic>> fetchOrders() async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/orders'),
+      headers: await authHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Nu am putut încărca comenzile.');
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    return decoded['data'] ?? [];
   }
 }
