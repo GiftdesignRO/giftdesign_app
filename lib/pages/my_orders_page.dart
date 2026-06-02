@@ -338,6 +338,15 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
     final items = orderItems(order);
     final deliveryMethod = order['delivery_method']?.toString() ?? '';
     final paymentMethod = order['payment_method']?.toString() ?? '';
+    final totalValue =
+    double.tryParse(order['total']?.toString() ?? '0') ?? 0;
+
+final shippingAmount =
+    deliveryMethod == 'Curier rapid' && totalValue < 400
+        ? 24.90
+        : 0.0;
+
+final productsSubtotal = totalValue - shippingAmount;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -453,11 +462,23 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
                       value: paymentMethod,
                     ),
                   infoLine(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Total',
-                    value: total,
-                    strong: true,
-                  ),
+  icon: Icons.shopping_bag_outlined,
+  label: 'Subtotal produse',
+  value: formatMoney(productsSubtotal),
+),
+
+infoLine(
+  icon: Icons.local_shipping_outlined,
+  label: 'Transport',
+  value: formatMoney(shippingAmount),
+),
+
+infoLine(
+  icon: Icons.receipt_long_outlined,
+  label: 'Total',
+  value: total,
+  strong: true,
+),
                 ],
               ),
             ),
