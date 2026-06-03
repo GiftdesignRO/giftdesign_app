@@ -104,4 +104,42 @@ class ApiService {
 
     return decoded['data'] ?? [];
   }
+
+  static Future<Map<String, dynamic>> getProfile() async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/profile'),
+      headers: await authHeaders(),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut încărca profilul.',
+      );
+    }
+
+    return decoded;
+  }
+
+  static Future<Map<String, dynamic>> saveProfile({
+    required Map<String, dynamic> profile,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$apiBaseUrl/profile'),
+      headers: await authHeaders(),
+      body: jsonEncode(profile),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut salva profilul.',
+      );
+    }
+
+    return decoded;
+  }
+
 }
