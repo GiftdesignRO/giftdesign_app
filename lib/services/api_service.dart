@@ -122,7 +122,7 @@ class ApiService {
     return decoded;
   }
 
-  static Future<Map<String, dynamic>> saveProfile({
+    static Future<Map<String, dynamic>> saveProfile({
     required Map<String, dynamic> profile,
   }) async {
     final response = await http.post(
@@ -142,4 +142,41 @@ class ApiService {
     return decoded;
   }
 
+  static Future<List<dynamic>> fetchAdminUsers() async {
+    final response = await http.get(
+      Uri.parse('$apiBaseUrl/admin/users'),
+      headers: await authHeaders(),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut încărca utilizatorii.',
+      );
+    }
+
+    return decoded['users'] ?? [];
+  }
+
+  static Future<Map<String, dynamic>> updateAdminUser({
+    required String userId,
+    required Map<String, dynamic> userData,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$apiBaseUrl/admin/users/$userId'),
+      headers: await authHeaders(),
+      body: jsonEncode(userData),
+    );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut actualiza utilizatorul.',
+      );
+    }
+
+    return decoded;
+  }
 }
