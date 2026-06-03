@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -4209,7 +4210,49 @@ class _HomePageState extends State<HomePage> {
           obscureText: true,
           decoration: accountFieldDecoration('Parolă', Icons.lock_outline),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () async {
+              final email = loginEmailController.text.trim();
+
+              if (email.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Introdu emailul mai întâi.')),
+                );
+                return;
+              }
+
+              try {
+                final response = await http.post(
+                  Uri.parse('$apiBaseUrl/forgot-password'),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'email': email,
+                  }),
+                );
+
+                final decoded = jsonDecode(response.body);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      decoded['message'] ??
+                          'Dacă emailul există, vei primi un link de resetare.',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Nu am putut trimite emailul.')),
+                );
+              }
+            },
+            child: const Text('Ai uitat parola?'),
+          ),
+        ),
+        const SizedBox(height: 14),
         SizedBox(
           height: 52,
           child: ElevatedButton.icon(
