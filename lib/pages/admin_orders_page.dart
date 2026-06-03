@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/constants.dart';
+import '../services/api_service.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   const AdminOrdersPage({super.key});
@@ -16,7 +17,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   late Future<List<Map<String, dynamic>>> ordersFuture;
   String searchQuery = '';
 
-  static const String ordersUrl = 'https://giftdesign-api.onrender.com/orders';
+  static const String ordersUrl = '$apiBaseUrl/admin/orders';
 
   @override
   void initState() {
@@ -25,13 +26,19 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   }
 
   Future<List<Map<String, dynamic>>> fetchOrders() async {
-    final response = await http.get(Uri.parse(ordersUrl));
-
-    if (response.statusCode != 200) {
-      throw Exception('Nu am putut încărca comenzile.');
-    }
+    final response = await http.get(
+      Uri.parse(ordersUrl),
+      headers: await ApiService.authHeaders(),
+    );
 
     final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut încărca comenzile.',
+      );
+    }
+
     final List data = decoded['data'] ?? [];
 
     return data.whereType<Map<String, dynamic>>().toList().reversed.toList();
