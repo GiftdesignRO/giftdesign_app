@@ -31,6 +31,9 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
 
+
+  assets:
+    - assets/data/romania_locations.json
   assets:
     - assets/images/logo.png
     - assets/images/app_icon.png 
