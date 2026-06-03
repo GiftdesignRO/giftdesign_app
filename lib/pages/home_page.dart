@@ -20,6 +20,7 @@ import 'order_tracking_page.dart';
 import 'activity_page.dart';
 import 'my_orders_page.dart';
 import 'profile_page.dart';
+import 'admin_users_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -3689,6 +3690,34 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+
+SizedBox(
+  height: 52,
+  child: ElevatedButton.icon(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const AdminUsersPage(),
+        ),
+      );
+    },
+    icon: const Icon(Icons.people_alt_outlined),
+    label: const Text('Admin clienți'),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.indigo,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      textStyle: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ),
+),
 
           const SizedBox(height: 12),
           SizedBox(
