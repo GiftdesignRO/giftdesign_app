@@ -19,6 +19,7 @@ import 'admin_orders_page.dart';
 import 'order_tracking_page.dart';
 import 'activity_page.dart';
 import 'my_orders_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -3807,6 +3808,59 @@ class _HomePageState extends State<HomePage> {
           ),
           secondary: const Icon(Icons.dark_mode_outlined, color: primaryColor),
           onChanged: saveDarkMode,
+        ),
+        const SizedBox(height: 12),
+        Card(
+          color: appCardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.badge_outlined,
+                    color: primaryColor,
+                    size: 34,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Profilul meu',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Completează datele de facturare și livrare.',
+                          style: TextStyle(color: appMutedTextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: primaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         Card(
