@@ -28,7 +28,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
-    loadSavedCheckoutData();
+    loadCheckoutData();
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -40,6 +40,106 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedCity;
   String deliveryMethod = 'Curier rapid';
   String paymentMethod = 'Ramburs';
+  bool profileLoading = true;
+
+  Future<void> loadCheckoutData() async {
+    await loadSavedCheckoutData();
+    await loadProfileCheckoutData();
+
+    if (!mounted) return;
+
+    setState(() {
+      profileLoading = false;
+    });
+  }
+
+  bool setCountyAndCity({
+    required String county,
+    required String city,
+  }) {
+    if (county.isEmpty || !romanianCities.containsKey(county)) {
+      return false;
+    }
+
+    selectedCounty = county;
+
+    final cityList = romanianCities[county] ?? <String>[];
+
+    if (city.isNotEmpty && cityList.contains(city)) {
+      selectedCity = city;
+    } else {
+      selectedCity = null;
+    }
+
+    return true;
+  }
+
+  Future<void> loadProfileCheckoutData() async {
+    try {
+      final response = await ApiService.getProfile();
+      final data = Map<String, dynamic>.from(response['data'] ?? {});
+
+      final sameAsBilling = data['shipping_same_as_billing'] != false;
+
+      final profileName = sameAsBilling
+          ? (data['billing_name'] ?? data['name'] ?? '').toString()
+          : (data['shipping_name'] ?? data['billing_name'] ?? data['name'] ?? '')
+              .toString();
+
+      final profileEmail = sameAsBilling
+          ? (data['billing_email'] ?? data['email'] ?? '').toString()
+          : (data['shipping_email'] ??
+                  data['billing_email'] ??
+                  data['email'] ??
+                  '')
+              .toString();
+
+      final profilePhone = sameAsBilling
+          ? (data['billing_phone'] ?? '').toString()
+          : (data['shipping_phone'] ?? data['billing_phone'] ?? '').toString();
+
+      final profileAddress = sameAsBilling
+          ? (data['billing_address'] ?? '').toString()
+          : (data['shipping_address'] ?? data['billing_address'] ?? '')
+              .toString();
+
+      final profileCounty = sameAsBilling
+          ? (data['billing_county'] ?? '').toString()
+          : (data['shipping_county'] ?? data['billing_county'] ?? '').toString();
+
+      final profileCity = sameAsBilling
+          ? (data['billing_city'] ?? '').toString()
+          : (data['shipping_city'] ?? data['billing_city'] ?? '').toString();
+
+      if (profileName.trim().isNotEmpty) {
+        nameController.text = profileName.trim();
+      }
+
+      if (profileEmail.trim().isNotEmpty) {
+        emailController.text = profileEmail.trim();
+      }
+
+      if (profilePhone.trim().isNotEmpty) {
+        phoneController.text = profilePhone.trim();
+      }
+
+      if (profileAddress.trim().isNotEmpty) {
+        addressController.text = profileAddress.trim();
+      }
+
+      setCountyAndCity(
+        county: profileCounty.trim(),
+        city: profileCity.trim(),
+      );
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {
+      // Dacă profilul nu poate fi încărcat, checkout-ul rămâne funcțional
+      // cu datele salvate local anterior.
+    }
+  }
 
   Future<void> loadSavedCheckoutData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,17 +156,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final savedCounty = prefs.getString('checkout_county');
     final savedCity = prefs.getString('checkout_city');
 
-    if (savedCounty != null &&
-        savedCounty.isNotEmpty &&
-        romanianCities.containsKey(savedCounty)) {
-      selectedCounty = savedCounty;
-
-      final cityList = romanianCities[savedCounty] ?? <String>[];
-      if (savedCity != null &&
-          savedCity.isNotEmpty &&
-          cityList.contains(savedCity)) {
-        selectedCity = savedCity;
-      }
+    if (savedCounty != null && savedCity != null) {
+      setCountyAndCity(
+        county: savedCounty,
+        city: savedCity,
+      );
     }
 
     final savedDeliveryMethod = prefs.getString('checkout_delivery_method');
@@ -176,6 +270,35 @@ class _CheckoutPageState extends State<CheckoutPage> {
               'Date livrare',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
+            if (profileLoading) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: primaryColor,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Încărcăm datele din profil...',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             TextFormField(
               controller: nameController,
