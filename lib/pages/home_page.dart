@@ -342,6 +342,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    loadSavedDarkMode();
     productsFuture = fetchProducts();
     categoriesFuture = fetchCategories();
     loadSavedUser();
@@ -460,6 +461,16 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> saveCart() async {
     await CartManager.saveCart(cart);
+  }
+
+  Future<void> loadSavedDarkMode() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!mounted) return;
+
+    setState(() {
+      darkMode = prefs.getBool('dark_mode') ?? false;
+    });
   }
 
   Future<void> loadPhase3Settings() async {
@@ -1675,7 +1686,16 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Eroare: ${snapshot.error}'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                'Eroare: ${snapshot.error}',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: appTextColor),
+              ),
+            ),
+          );
         }
 
         final products = snapshot.data ?? [];
@@ -1763,7 +1783,8 @@ class _HomePageState extends State<HomePage> {
                           showSubcategories
                               ? 'Subcategorii ${selectedMainGroup.title}'
                               : '${filteredProducts.length} produse',
-                          style: const TextStyle(
+                          style: TextStyle(
+                            color: appTextColor,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1772,7 +1793,7 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 6),
                           Text(
                             'Alege o subcategorie pentru a vedea produsele.',
-                            style: TextStyle(color: Colors.grey.shade700),
+                            style: TextStyle(color: appMutedTextColor),
                           ),
                         ],
                         const SizedBox(height: 12),
@@ -1880,6 +1901,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(16),
               children: [
                 Card(
+                  color: appCardColor,
                   child: ListTile(
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -1894,12 +1916,15 @@ class _HomePageState extends State<HomePage> {
                         width: 46,
                       ),
                     ),
-                    title: const Text(
-                      'Toate produsele',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text('${products.length} produse'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    title: Text(
+  'Toate produsele',
+  style: TextStyle(
+    color: appTextColor,
+    fontWeight: FontWeight.bold,
+  ),
+),
+subtitle: Text('${products.length} produse'),
+trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () => setState(() {
                       selectedCategory = 'Toate';
                       showMainCategoryProducts = false;
@@ -1919,6 +1944,7 @@ class _HomePageState extends State<HomePage> {
 
                   if (visibleSubcategories.isEmpty) {
                     return Card(
+                      color: appCardColor,
                       child: ListTile(
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -1934,9 +1960,12 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         title: Text(
-                          group.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+  group.title,
+  style: TextStyle(
+    color: appTextColor,
+    fontWeight: FontWeight.bold,
+  ),
+),
                         subtitle: Text('$groupCount produse'),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () => setState(() {
@@ -1949,6 +1978,7 @@ class _HomePageState extends State<HomePage> {
                   }
 
                   return Card(
+                      color: appCardColor,
                     child: ExpansionTile(
                       leading: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -1964,9 +1994,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       title: Text(
-                        group.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+  group.title,
+  style: TextStyle(
+    color: appTextColor,
+    fontWeight: FontWeight.bold,
+  ),
+),
                       subtitle: Text('$groupCount produse'),
                       children: [
                         ListTile(
@@ -2005,6 +2038,7 @@ class _HomePageState extends State<HomePage> {
                 if (otherCategories.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Card(
+                    color: appCardColor,
                     child: ExpansionTile(
                       leading: const Icon(
                         Icons.more_horiz,
@@ -2340,9 +2374,9 @@ class _HomePageState extends State<HomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: appCardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: appBorderColor),
       ),
       child: Row(
         children: [
@@ -2353,7 +2387,7 @@ class _HomePageState extends State<HomePage> {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
+                color: appSurfaceColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.arrow_back_rounded, color: primaryColor),
@@ -2368,14 +2402,15 @@ class _HomePageState extends State<HomePage> {
                   breadcrumb,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  style: TextStyle(color: appMutedTextColor, fontSize: 12),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: appTextColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -2462,9 +2497,9 @@ class _HomePageState extends State<HomePage> {
                   width: 230,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: appCardColor,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: appBorderColor),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.04),
@@ -2525,7 +2560,7 @@ class _HomePageState extends State<HomePage> {
                             Text(
                               'Vezi produsul',
                               style: TextStyle(
-                                color: Colors.grey.shade600,
+                                color: appMutedTextColor,
                                 fontSize: 12,
                               ),
                             ),
@@ -3113,7 +3148,8 @@ class _HomePageState extends State<HomePage> {
                     subcategory,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: appTextColor,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3121,7 +3157,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 4),
                   Text(
                     '$count produse',
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                    style: TextStyle(color: appMutedTextColor, fontSize: 13),
                   ),
                 ],
               ),
@@ -3475,7 +3511,12 @@ class _HomePageState extends State<HomePage> {
 
   Widget productGrid(List<Product> products) {
     if (products.isEmpty) {
-      return const Center(child: Text('Nu am găsit produse'));
+      return Center(
+        child: Text(
+          'Nu am găsit produse',
+          style: TextStyle(color: appTextColor),
+        ),
+      );
     }
 
     return GridView.builder(
@@ -3559,7 +3600,12 @@ class _HomePageState extends State<HomePage> {
 
   Widget buildFavorites() {
     if (favorites.isEmpty) {
-      return const Center(child: Text('Nu ai produse favorite'));
+      return Center(
+        child: Text(
+          'Nu ai produse favorite',
+          style: TextStyle(color: appTextColor),
+        ),
+      );
     }
 
     final list = favorites.toList();
@@ -3578,6 +3624,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(18),
           onTap: () => openProduct(product),
           child: Card(
+            color: appCardColor,
             margin: const EdgeInsets.only(bottom: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
@@ -3618,7 +3665,8 @@ class _HomePageState extends State<HomePage> {
                                 product.title,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
+                                  color: appTextColor,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -3730,13 +3778,14 @@ class _HomePageState extends State<HomePage> {
   InputDecoration accountFieldDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: appMutedTextColor),
+      labelStyle: TextStyle(color: appMutedTextColor),
       filled: true,
       fillColor: appSurfaceColor,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: appBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -3772,7 +3821,11 @@ class _HomePageState extends State<HomePage> {
           Text(
             loggedUserName ?? 'Client GiftDesign',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: appTextColor,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -3909,16 +3962,20 @@ class _HomePageState extends State<HomePage> {
           color: primaryColor,
         ),
         const SizedBox(height: 14),
-        const Text(
+        Text(
           'Contul meu',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: appTextColor,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           'Intră în cont sau creează unul nou pentru a salva comenzile și datele tale.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade700),
+          style: TextStyle(color: appMutedTextColor),
         ),
         const SizedBox(height: 28),
         SizedBox(
@@ -3978,9 +4035,12 @@ class _HomePageState extends State<HomePage> {
         SwitchListTile(
           value: darkMode,
           activeColor: primaryColor,
-          title: const Text(
+          title: Text(
             'Dark mode',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: appTextColor,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           subtitle: Text(
             'Comută aplicația în modul întunecat',
@@ -4017,9 +4077,10 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Profilul meu',
                           style: TextStyle(
+                            color: appTextColor,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -4074,9 +4135,10 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Comenzile mele',
                           style: TextStyle(
+                            color: appTextColor,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -4127,9 +4189,10 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Order tracking',
                           style: TextStyle(
+                            color: appTextColor,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -4165,9 +4228,13 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Analytics',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: appTextColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -4273,7 +4340,11 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: appTextColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 3),
           Text(
@@ -4300,11 +4371,15 @@ class _HomePageState extends State<HomePage> {
               },
               icon: const Icon(Icons.arrow_back),
             ),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Creează cont',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: appTextColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 48),
@@ -4439,11 +4514,15 @@ class _HomePageState extends State<HomePage> {
               },
               icon: const Icon(Icons.arrow_back),
             ),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Autentificare',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: appTextColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 48),

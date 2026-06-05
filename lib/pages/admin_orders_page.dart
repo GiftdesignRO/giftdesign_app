@@ -16,8 +16,11 @@ class AdminOrdersPage extends StatefulWidget {
 class _AdminOrdersPageState extends State<AdminOrdersPage> {
   late Future<List<Map<String, dynamic>>> ordersFuture;
   String searchQuery = '';
+  bool syncingMerchantPro = false;
 
   static const String ordersUrl = '$apiBaseUrl/admin/orders';
+  static const String syncMerchantProUrl =
+      '$apiBaseUrl/admin/orders/sync-merchantpro';
 
   @override
   void initState() {
@@ -51,31 +54,63 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
     await ordersFuture;
   }
-Future<void> updateOrderStatus(
-  String orderId,
-  String status,
-) async {
-  final response = await http.put(
-    Uri.parse('$apiBaseUrl/admin/orders/$orderId/status'),
-    headers: {
-      ...await ApiService.authHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({
-      'status': status,
-    }),
-  );
 
-  final decoded = jsonDecode(response.body);
+  Future<void> syncMerchantProOrders() async {
+    if (syncingMerchantPro) return;
 
-  if (response.statusCode != 200) {
-    throw Exception(
-      decoded['error'] ?? 'Nu am putut actualiza statusul.',
-    );
+    setState(() {
+      syncingMerchantPro = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse(syncMerchantProUrl),
+        headers: await ApiService.authHeaders(),
+      );
+
+      final decoded = jsonDecode(response.body);
+
+      if (!mounted) return;
+
+      if (response.statusCode != 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              decoded['error']?.toString() ??
+                  'Sincronizarea MerchantPro a eșuat.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final imported = decoded['imported']?.toString() ?? '0';
+      final skipped = decoded['skipped']?.toString() ?? '0';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'MerchantPro sincronizat: $imported importate, $skipped existente.',
+          ),
+        ),
+      );
+
+      await refreshOrders();
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Eroare sincronizare: $error')),
+      );
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        syncingMerchantPro = false;
+      });
+    }
   }
 
-  await refreshOrders();
-}
   String textValue(dynamic value) {
     return value?.toString() ?? '';
   }
@@ -144,12 +179,26 @@ Future<void> updateOrderStatus(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         actions: [
-          IconButton(
-            onPressed: refreshOrders,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reîncarcă',
-          ),
-        ],
+  IconButton(
+    onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
+    icon: syncingMerchantPro
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+        : const Icon(Icons.sync),
+    tooltip: 'Sincronizează MerchantPro',
+  ),
+  IconButton(
+    onPressed: refreshOrders,
+    icon: const Icon(Icons.refresh),
+    tooltip: 'Reîncarcă',
+  ),
+],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: ordersFuture,
@@ -202,6 +251,40 @@ Future<void> updateOrderStatus(
                   ],
                 ),
                 const SizedBox(height: 14),
+                
+                SizedBox(
+  height: 48,
+  width: double.infinity,
+  child: ElevatedButton.icon(
+    onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
+    icon: syncingMerchantPro
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+        : const Icon(Icons.sync),
+    label: Text(
+      syncingMerchantPro
+          ? 'Se sincronizează cu MerchantPro...'
+          : 'Sincronizează cu MerchantPro',
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryColor,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      textStyle: const TextStyle(
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ),
+),
+const SizedBox(height: 14),
                 TextField(
                   onChanged: (value) {
                     setState(() {
@@ -226,12 +309,7 @@ Future<void> updateOrderStatus(
                     child: Center(child: Text('Nu există comenzi')),
                   )
                 else
-                  ...visibleOrders.map(
-  (order) => OrderAdminCard(
-    order: order,
-    onStatusChanged: updateOrderStatus,
-  ),
-),
+                  ...visibleOrders.map((order) => OrderAdminCard(order: order)),
               ],
             ),
           );
@@ -301,16 +379,7 @@ class _StatCard extends StatelessWidget {
 class OrderAdminCard extends StatelessWidget {
   final Map<String, dynamic> order;
 
-  final Future<void> Function(
-    String orderId,
-    String status,
-  ) onStatusChanged;
-
-  const OrderAdminCard({
-    super.key,
-    required this.order,
-    required this.onStatusChanged,
-  });
+  const OrderAdminCard({super.key, required this.order});
 
   String textValue(dynamic value) => value?.toString() ?? '';
 
@@ -434,68 +503,6 @@ class OrderAdminCard extends StatelessWidget {
             value: textValue(order['delivery_method']),
           ),
           _InfoRow(label: 'Plată', value: textValue(order['payment_method'])),
-          const SizedBox(height: 12),
-
-DropdownButtonFormField<String>(
-  value: [
-    'Procesare',
-    'Expediată',
-    'Livrată',
-    'Anulată',
-  ].contains(status)
-      ? status
-      : null,
-  decoration: const InputDecoration(
-    labelText: 'Schimbă status',
-    border: OutlineInputBorder(),
-  ),
-  items: const [
-    DropdownMenuItem(
-      value: 'Procesare',
-      child: Text('Procesare'),
-    ),
-    DropdownMenuItem(
-      value: 'Expediată',
-      child: Text('Expediată'),
-    ),
-    DropdownMenuItem(
-      value: 'Livrată',
-      child: Text('Livrată'),
-    ),
-    DropdownMenuItem(
-      value: 'Anulată',
-      child: Text('Anulată'),
-    ),
-  ],
-  onChanged: (value) async {
-    if (value == null) return;
-
-    try {
-      await onStatusChanged(
-        textValue(order['id']),
-        value,
-      );
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Status schimbat în $value',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-          ),
-        );
-      }
-    }
-  },
-),
           if (cancelReason.isNotEmpty) ...[
   const SizedBox(height: 10),
   Container(
