@@ -65,10 +65,12 @@ class _HomePageState extends State<HomePage> {
   final accountConfirmPasswordController = TextEditingController();
   final loginEmailController = TextEditingController();
   final loginPasswordController = TextEditingController();
+  bool obscureLoginPassword = true;
 
   final Map<String, CartItem> cart = {};
   final Set<Product> favorites = {};
   final Set<String> favoriteKeys = {};
+  final Map<String, int> favoriteQuantities = {};
   final List<Product> recentlyViewed = [];
   final List<Product> addedToCartHistory = [];
   final List<String> searchHistory = [];
@@ -638,6 +640,12 @@ class _HomePageState extends State<HomePage> {
   String cartKey(Product product) =>
       product.sku.isNotEmpty ? product.sku : product.title;
 
+  int stockFor(Product product) {
+    final parsed = int.tryParse(product.stock.trim());
+    if (parsed == null || parsed < 0) return 0;
+    return parsed;
+  }
+
   int get cartItemCount =>
       cart.values.fold<int>(0, (sum, item) => sum + item.quantity);
 
@@ -830,16 +838,40 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void addToCart(Product product) {
-    trackAddToCart(product);
-
+  void addToCart(Product product, [int quantity = 1]) {
     final key = cartKey(product);
+    final stock = stockFor(product);
+    final currentQuantity = cart[key]?.quantity ?? 0;
+    final requestedQuantity = quantity < 1 ? 1 : quantity;
+
+    if (stock <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produsul nu este disponibil momentan.'),
+        ),
+      );
+      return;
+    }
+
+    if (currentQuantity + requestedQuantity > stock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Stoc disponibil: $stock buc.'),
+        ),
+      );
+      return;
+    }
+
+    trackAddToCart(product);
 
     setState(() {
       if (cart.containsKey(key)) {
-        cart[key]!.quantity++;
+        cart[key]!.quantity += requestedQuantity;
       } else {
-        cart[key] = CartItem(product: product);
+        cart[key] = CartItem(
+          product: product,
+          quantity: requestedQuantity,
+        );
       }
 
       cartBounce = true;
@@ -857,7 +889,11 @@ class _HomePageState extends State<HomePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${product.title} adăugat în coș'),
+        content: Text(
+          requestedQuantity == 1
+              ? '${product.title} adăugat în coș'
+              : '$requestedQuantity x ${product.title} adăugate în coș',
+        ),
         duration: const Duration(seconds: 2),
         action: selectedIndex == 3
             ? null
@@ -874,7 +910,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   void increaseQuantity(String key) {
-    setState(() => cart[key]?.quantity++);
+    final item = cart[key];
+    if (item == null) return;
+
+    final stock = stockFor(item.product);
+
+    if (item.quantity >= stock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Stoc disponibil: $stock buc.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => item.quantity++);
     saveCart();
   }
 
@@ -2540,7 +2590,7 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'AI Gift Finder',
+                        'Asistent Cadouri',
                         style: TextStyle(
                           color: appTextColor,
                           fontSize: 20,
@@ -2549,7 +2599,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Alege rapid pentru cine, ocazia și bugetul.',
+                        'Alege mai ușor cadoul perfect.',
                         style: TextStyle(
                           color: appMutedTextColor,
                           fontSize: 13,
@@ -3440,6 +3490,73 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget favoriteQuantitySelector(Product product) {
+    final key = cartKey(product);
+    final stock = stockFor(product);
+    final selectedQuantity = favoriteQuantities[key] ?? 1;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: primaryColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: primaryColor.withOpacity(0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: selectedQuantity > 1
+                ? () {
+                    setState(() {
+                      favoriteQuantities[key] = selectedQuantity - 1;
+                    });
+                  }
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.remove_circle_outline,
+                color: selectedQuantity > 1 ? primaryColor : Colors.grey,
+                size: 22,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 34,
+            child: Text(
+              selectedQuantity.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: selectedQuantity < stock
+                ? () {
+                    setState(() {
+                      favoriteQuantities[key] = selectedQuantity + 1;
+                    });
+                  }
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.add_circle_outline,
+                color: selectedQuantity < stock ? primaryColor : Colors.grey,
+                size: 22,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildFavorites() {
     if (favorites.isEmpty) {
       return const Center(child: Text('Nu ai produse favorite'));
@@ -3453,6 +3570,9 @@ class _HomePageState extends State<HomePage> {
       itemBuilder: (context, index) {
         final product = list[index];
         final image = product.images.isNotEmpty ? product.images.first : '';
+        final favoriteKey = cartKey(product);
+        final selectedQuantity = favoriteQuantities[favoriteKey] ?? 1;
+        final stock = stockFor(product);
 
         return InkWell(
           borderRadius: BorderRadius.circular(18),
@@ -3519,37 +3639,63 @@ class _HomePageState extends State<HomePage> {
 
                         productPriceBlock(product),
 
+                        const SizedBox(height: 6),
+
+                        Text(
+                          stock > 0
+                              ? 'Stoc disponibil: $stock buc.'
+                              : 'Stoc indisponibil',
+                          style: TextStyle(
+                            color: stock > 0 ? Colors.green : Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            favoriteQuantitySelector(product),
+                          ],
+                        ),
+
                         const SizedBox(height: 12),
 
                         Row(
                           children: [
                             Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  flyToCartFrom(context);
-                                  addToCart(product);
-                                },
-
-                                icon: const Icon(
-                                  Icons.shopping_cart_outlined,
-                                  size: 18,
-                                ),
-
-                                label: const Text('Adaugă'),
-
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
+  child: Builder(
+    builder: (buttonContext) {
+      return ElevatedButton.icon(
+        onPressed: stock > 0
+            ? () {
+                flyToCartFrom(buttonContext);
+                addToCart(product, selectedQuantity);
+              }
+            : null,
+        icon: const Icon(
+          Icons.shopping_cart_outlined,
+          size: 18,
+        ),
+        label: const Text('Adaugă în coș'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(
+            vertical: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    },
+  ),
+),
 
                             const SizedBox(width: 10),
 
@@ -3609,6 +3755,9 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (loggedUserEmail != null) {
+      final isAdmin =
+    loggedUserEmail?.toLowerCase() ==
+    'overclockmanager@gmail.com';
       return ListView(
         padding: EdgeInsets.fromLTRB(
           20,
@@ -3661,63 +3810,65 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 16),
 
-          SizedBox(
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminOrdersPage()),
-                );
-              },
-
-              icon: const Icon(Icons.admin_panel_settings),
-
-              label: const Text('Admin comenzi'),
-
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+          if (isAdmin) ...[
+  SizedBox(
+    height: 52,
+    child: ElevatedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminOrdersPage(),
           ),
-          const SizedBox(height: 12),
-
-SizedBox(
-  height: 52,
-  child: ElevatedButton.icon(
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const AdminUsersPage(),
+        );
+      },
+      icon: const Icon(Icons.admin_panel_settings),
+      label: const Text('Admin comenzi'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-      );
-    },
-    icon: const Icon(Icons.people_alt_outlined),
-    label: const Text('Admin clienți'),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.indigo,
-      foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      textStyle: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     ),
   ),
-),
+  const SizedBox(height: 12),
+
+  SizedBox(
+    height: 52,
+    child: ElevatedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminUsersPage(),
+          ),
+        );
+      },
+      icon: const Icon(Icons.people_alt_outlined),
+      label: const Text('Admin clienți'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+  ),
+  const SizedBox(height: 12),
+],
+
+
 
           const SizedBox(height: 12),
           SizedBox(
@@ -4178,9 +4329,25 @@ SizedBox(
         const SizedBox(height: 12),
         TextField(
           controller: accountPasswordController,
-          obscureText: true,
+          obscureText: obscureLoginPassword,
           textInputAction: TextInputAction.next,
-          decoration: accountFieldDecoration('Parolă', Icons.lock_outline),
+          decoration: accountFieldDecoration(
+  'Parolă',
+  Icons.lock_outline,
+).copyWith(
+  suffixIcon: IconButton(
+    onPressed: () {
+      setState(() {
+        obscureLoginPassword = !obscureLoginPassword;
+      });
+    },
+    icon: Icon(
+      obscureLoginPassword
+          ? Icons.visibility_off
+          : Icons.visibility,
+    ),
+  ),
+),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -4290,8 +4457,24 @@ SizedBox(
         const SizedBox(height: 12),
         TextField(
           controller: loginPasswordController,
-          obscureText: true,
-          decoration: accountFieldDecoration('Parolă', Icons.lock_outline),
+          obscureText: obscureLoginPassword,
+          decoration: accountFieldDecoration(
+  'Parolă',
+  Icons.lock_outline,
+).copyWith(
+  suffixIcon: IconButton(
+    onPressed: () {
+      setState(() {
+        obscureLoginPassword = !obscureLoginPassword;
+      });
+    },
+    icon: Icon(
+      obscureLoginPassword
+          ? Icons.visibility_off
+          : Icons.visibility,
+    ),
+  ),
+),
         ),
         const SizedBox(height: 8),
         Align(
