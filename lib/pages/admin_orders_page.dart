@@ -51,7 +51,31 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
     await ordersFuture;
   }
+Future<void> updateOrderStatus(
+  String orderId,
+  String status,
+) async {
+  final response = await http.put(
+    Uri.parse('$apiBaseUrl/admin/orders/$orderId/status'),
+    headers: {
+      ...await ApiService.authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'status': status,
+    }),
+  );
 
+  final decoded = jsonDecode(response.body);
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      decoded['error'] ?? 'Nu am putut actualiza statusul.',
+    );
+  }
+
+  await refreshOrders();
+}
   String textValue(dynamic value) {
     return value?.toString() ?? '';
   }
@@ -202,7 +226,12 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     child: Center(child: Text('Nu există comenzi')),
                   )
                 else
-                  ...visibleOrders.map((order) => OrderAdminCard(order: order)),
+                  ...visibleOrders.map(
+  (order) => OrderAdminCard(
+    order: order,
+    onStatusChanged: updateOrderStatus,
+  ),
+),
               ],
             ),
           );
@@ -272,7 +301,16 @@ class _StatCard extends StatelessWidget {
 class OrderAdminCard extends StatelessWidget {
   final Map<String, dynamic> order;
 
-  const OrderAdminCard({super.key, required this.order});
+  final Future<void> Function(
+    String orderId,
+    String status,
+  ) onStatusChanged;
+
+  const OrderAdminCard({
+    super.key,
+    required this.order,
+    required this.onStatusChanged,
+  });
 
   String textValue(dynamic value) => value?.toString() ?? '';
 
@@ -320,6 +358,9 @@ class OrderAdminCard extends StatelessWidget {
     final status = textValue(order['status']).isNotEmpty
         ? textValue(order['status'])
         : 'Nouă';
+        final cancelReason = textValue(order['cancel_reason']);
+        final cancelledAt = textValue(order['cancelled_at']);
+        final cancelledBy = textValue(order['cancelled_by']);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -393,6 +434,107 @@ class OrderAdminCard extends StatelessWidget {
             value: textValue(order['delivery_method']),
           ),
           _InfoRow(label: 'Plată', value: textValue(order['payment_method'])),
+          const SizedBox(height: 12),
+
+DropdownButtonFormField<String>(
+  value: [
+    'Procesare',
+    'Expediată',
+    'Livrată',
+    'Anulată',
+  ].contains(status)
+      ? status
+      : null,
+  decoration: const InputDecoration(
+    labelText: 'Schimbă status',
+    border: OutlineInputBorder(),
+  ),
+  items: const [
+    DropdownMenuItem(
+      value: 'Procesare',
+      child: Text('Procesare'),
+    ),
+    DropdownMenuItem(
+      value: 'Expediată',
+      child: Text('Expediată'),
+    ),
+    DropdownMenuItem(
+      value: 'Livrată',
+      child: Text('Livrată'),
+    ),
+    DropdownMenuItem(
+      value: 'Anulată',
+      child: Text('Anulată'),
+    ),
+  ],
+  onChanged: (value) async {
+    if (value == null) return;
+
+    try {
+      await onStatusChanged(
+        textValue(order['id']),
+        value,
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Status schimbat în $value',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
+    }
+  },
+),
+          if (cancelReason.isNotEmpty) ...[
+  const SizedBox(height: 10),
+  Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.red.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.red.withOpacity(0.20),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Detalii anulare',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _InfoRow(
+          label: 'Motiv',
+          value: cancelReason,
+        ),
+        _InfoRow(
+          label: 'Anulată la',
+          value: formatDate(cancelledAt),
+        ),
+        _InfoRow(
+          label: 'De',
+          value: cancelledBy,
+        ),
+      ],
+    ),
+  ),
+],
           const SizedBox(height: 12),
           const Align(
             alignment: Alignment.centerLeft,
