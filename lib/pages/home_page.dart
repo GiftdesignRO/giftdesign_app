@@ -4341,11 +4341,13 @@ class _HomePageState extends State<HomePage> {
         obscureLoginPassword = !obscureLoginPassword;
       });
     },
-    icon: Icon(
-      obscureLoginPassword
-          ? Icons.visibility_off
-          : Icons.visibility,
-    ),
+    icon: Image.asset(
+  obscureLoginPassword
+      ? 'assets/images/dragon_eye_closed.png'
+      : 'assets/images/dragon_eye_open.png',
+  width: 26,
+  height: 26,
+),
   ),
 ),
         ),
@@ -4468,11 +4470,13 @@ class _HomePageState extends State<HomePage> {
         obscureLoginPassword = !obscureLoginPassword;
       });
     },
-    icon: Icon(
-      obscureLoginPassword
-          ? Icons.visibility_off
-          : Icons.visibility,
-    ),
+    icon: Image.asset(
+  obscureLoginPassword
+      ? 'assets/images/dragon_eye_closed.png'
+      : 'assets/images/dragon_eye_open.png',
+  width: 26,
+  height: 26,
+),
   ),
 ),
         ),

@@ -34,5 +34,4 @@ flutter:
 
   assets:
     - assets/data/romania_locations.json
-    - assets/images/logo.png
-    - assets/images/app_icon.png 
+    - assets/images/
