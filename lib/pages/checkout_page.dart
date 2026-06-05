@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import 'package:flutter/services.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> items;
@@ -41,8 +42,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String deliveryMethod = 'Curier rapid';
   String paymentMethod = 'Ramburs';
   bool profileLoading = true;
+  Future<void> loadRomaniaLocations() async {
+  try {
+    final raw = await rootBundle.loadString(
+      'assets/data/romania_locations.json',
+    );
 
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+
+    romanianCities = decoded.map((key, value) {
+      final cities = (value as List)
+          .map((item) => item.toString())
+          .where((item) => item.trim().isNotEmpty)
+          .toList()
+        ..sort();
+
+      return MapEntry(key.toString(), cities);
+    });
+  } catch (_) {
+    romanianCities = {};
+  }
+}
   Future<void> loadCheckoutData() async {
+    await loadRomaniaLocations();
     await loadSavedCheckoutData();
     await loadProfileCheckoutData();
 
@@ -192,30 +214,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     await prefs.setString('checkout_payment_method', paymentMethod);
   }
 
-  final Map<String, List<String>> romanianCities = const {
-    'București': [
-      'Sector 1',
-      'Sector 2',
-      'Sector 3',
-      'Sector 4',
-      'Sector 5',
-      'Sector 6',
-    ],
-    'Alba': ['Alba Iulia', 'Aiud', 'Blaj', 'Sebeș'],
-    'Arad': ['Arad', 'Ineu', 'Lipova', 'Nădlac'],
-    'Argeș': ['Pitești', 'Câmpulung', 'Curtea de Argeș', 'Mioveni'],
-    'Bacău': ['Bacău', 'Onești', 'Moinești', 'Comănești'],
-    'Bihor': ['Oradea', 'Salonta', 'Marghita', 'Beiuș'],
-    'Brașov': ['Brașov', 'Făgăraș', 'Săcele', 'Codlea'],
-    'Cluj': ['Cluj-Napoca', 'Turda', 'Dej', 'Câmpia Turzii'],
-    'Constanța': ['Constanța', 'Mangalia', 'Medgidia', 'Năvodari'],
-    'Dolj': ['Craiova', 'Băilești', 'Calafat', 'Filiași'],
-    'Galați': ['Galați', 'Tecuci', 'Târgu Bujor'],
-    'Iași': ['Iași', 'Pașcani', 'Hârlău', 'Târgu Frumos'],
-    'Ilfov': ['Voluntari', 'Otopeni', 'Popești-Leordeni', 'Buftea', 'Chiajna'],
-    'Prahova': ['Ploiești', 'Câmpina', 'Sinaia', 'Bușteni'],
-    'Timiș': ['Timișoara', 'Lugoj', 'Sânnicolau Mare', 'Jimbolia'],
-  };
+  Map<String, List<String>> romanianCities = {};
 
   @override
   void dispose() {
