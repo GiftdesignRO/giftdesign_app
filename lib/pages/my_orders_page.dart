@@ -126,7 +126,126 @@ class _MyOrdersPageState extends State<MyOrdersPage> {
       });
     }
   }
+Future<void> cancelOrder(dynamic order) async {
+  final reasons = [
+    'M-am răzgândit',
+    'Am greșit produsele',
+    'Am greșit adresa',
+    'Nu mai am bani',
+    'Am plasat comanda din greșeală',
+    'Livrarea durează prea mult',
+    'Alt motiv',
+  ];
 
+  String? selectedReason;
+  final customReasonController = TextEditingController();
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Anulează comanda'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...reasons.map(
+                    (reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedReason = value!;
+                        });
+                      },
+                    ),
+                  ),
+                  if (selectedReason == 'Alt motiv')
+                    TextField(
+                      controller: customReasonController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Scrie motivul',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(dialogContext, false),
+                child: const Text('Renunță'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+
+  if (selectedReason == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Selectează un motiv.'),
+      ),
+    );
+    return;
+  }
+
+  if (selectedReason == 'Alt motiv' &&
+      customReasonController.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Scrie motivul anulării.'),
+      ),
+    );
+    return;
+  }
+
+  Navigator.pop(dialogContext, true);
+},
+                child: const Text('Anulează'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  if (confirmed != true) {
+    customReasonController.dispose();
+    return;
+  }
+
+  final customReason = customReasonController.text.trim();
+  customReasonController.dispose();
+
+  try {
+    await ApiService.cancelOrder(
+      order['id'].toString(),
+      reason: selectedReason!,
+      customReason: customReason,
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Comanda a fost anulată.'),
+      ),
+    );
+
+    await refreshOrders();
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.toString())),
+    );
+  }
+}
   Widget statusBadge(String status) {
     final color = statusColor(status);
 
@@ -520,6 +639,25 @@ infoLine(
                 ),
               ),
             ),
+           if (!status.toLowerCase().contains('anulat')) ...[
+  const SizedBox(height: 10),
+  SizedBox(
+    width: double.infinity,
+    height: 48,
+    child: OutlinedButton.icon(
+      onPressed: () => cancelOrder(order),
+      icon: const Icon(Icons.cancel_outlined),
+      label: const Text('Anulează comanda'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.red,
+        side: const BorderSide(color: Colors.red),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+    ),
+  ),
+],
           ],
         ),
       ),

@@ -326,7 +326,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedCounty,
+              value: selectedCounty != null && counties.contains(selectedCounty)
+    ? selectedCounty
+    : null,
               decoration: fieldDecoration('Județ'),
               items: counties
                   .map(
@@ -342,7 +344,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: selectedCity,
+              value: selectedCity != null && cities.contains(selectedCity)
+    ? selectedCity
+    : null,
               decoration: fieldDecoration('Oraș / Localitate'),
               items: cities
                   .map(

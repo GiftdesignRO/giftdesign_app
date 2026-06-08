@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/constants.dart';
 import '../services/api_service.dart';
@@ -15,6 +18,12 @@ class _ProfilePageState extends State<ProfilePage> {
   bool saving = false;
   String customerType = 'individual';
   bool shippingSameAsBilling = true;
+
+  Map<String, List<String>> romanianCities = {};
+  String? selectedBillingCounty;
+  String? selectedBillingCity;
+  String? selectedShippingCounty;
+  String? selectedShippingCity;
 
   final billingNameController = TextEditingController();
   final billingEmailController = TextEditingController();
@@ -42,7 +51,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    loadProfile();
+    loadInitialData();
   }
 
   @override
@@ -73,10 +82,68 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
+  Future<void> loadInitialData() async {
+    await loadRomaniaLocations();
+    await loadProfile();
+  }
+
+  Future<void> loadRomaniaLocations() async {
+    try {
+      final raw = await rootBundle.loadString(
+        'assets/data/romania_locations.json',
+      );
+
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+
+      romanianCities = decoded.map((key, value) {
+        final cities = (value as List)
+            .map((item) => item.toString())
+            .where((item) => item.trim().isNotEmpty)
+            .toList()
+          ..sort();
+
+        return MapEntry(key.toString(), cities);
+      });
+    } catch (_) {
+      romanianCities = {};
+    }
+  }
+
   String textValue(dynamic value) => (value ?? '').toString();
 
   void setText(TextEditingController controller, dynamic value) {
     controller.text = textValue(value);
+  }
+
+  bool setLocation({
+    required String county,
+    required String city,
+    required bool shipping,
+  }) {
+    final cleanCounty = county.trim();
+    final cleanCity = city.trim();
+
+    if (cleanCounty.isEmpty || !romanianCities.containsKey(cleanCounty)) {
+      return false;
+    }
+
+    final cities = romanianCities[cleanCounty] ?? <String>[];
+    final safeCity =
+        cleanCity.isNotEmpty && cities.contains(cleanCity) ? cleanCity : null;
+
+    if (shipping) {
+      selectedShippingCounty = cleanCounty;
+      selectedShippingCity = safeCity;
+      shippingCountyController.text = cleanCounty;
+      shippingCityController.text = safeCity ?? '';
+    } else {
+      selectedBillingCounty = cleanCounty;
+      selectedBillingCity = safeCity;
+      billingCountyController.text = cleanCounty;
+      billingCityController.text = safeCity ?? '';
+    }
+
+    return true;
   }
 
   Future<void> loadProfile() async {
@@ -97,9 +164,13 @@ class _ProfilePageState extends State<ProfilePage> {
         setText(billingEmailController, data['billing_email'] ?? data['email']);
         setText(billingPhoneController, data['billing_phone']);
         setText(billingAddressController, data['billing_address']);
-        setText(billingCityController, data['billing_city']);
-        setText(billingCountyController, data['billing_county']);
         setText(billingPostalCodeController, data['billing_postal_code']);
+
+        setLocation(
+          county: textValue(data['billing_county']),
+          city: textValue(data['billing_city']),
+          shipping: false,
+        );
 
         setText(companyNameController, data['company_name']);
         setText(companyCuiController, data['company_cui']);
@@ -112,9 +183,13 @@ class _ProfilePageState extends State<ProfilePage> {
         setText(shippingEmailController, data['shipping_email']);
         setText(shippingPhoneController, data['shipping_phone']);
         setText(shippingAddressController, data['shipping_address']);
-        setText(shippingCityController, data['shipping_city']);
-        setText(shippingCountyController, data['shipping_county']);
         setText(shippingPostalCodeController, data['shipping_postal_code']);
+
+        setLocation(
+          county: textValue(data['shipping_county']),
+          city: textValue(data['shipping_city']),
+          shipping: true,
+        );
 
         loading = false;
       });
@@ -138,6 +213,12 @@ class _ProfilePageState extends State<ProfilePage> {
       saving = true;
     });
 
+    final billingCounty =
+        selectedBillingCounty ?? billingCountyController.text.trim();
+
+    final billingCity =
+        selectedBillingCity ?? billingCityController.text.trim();
+
     final shippingName = shippingSameAsBilling
         ? billingNameController.text.trim()
         : shippingNameController.text.trim();
@@ -154,13 +235,13 @@ class _ProfilePageState extends State<ProfilePage> {
         ? billingAddressController.text.trim()
         : shippingAddressController.text.trim();
 
-    final shippingCity = shippingSameAsBilling
-        ? billingCityController.text.trim()
-        : shippingCityController.text.trim();
-
     final shippingCounty = shippingSameAsBilling
-        ? billingCountyController.text.trim()
-        : shippingCountyController.text.trim();
+        ? billingCounty
+        : (selectedShippingCounty ?? shippingCountyController.text.trim());
+
+    final shippingCity = shippingSameAsBilling
+        ? billingCity
+        : (selectedShippingCity ?? shippingCityController.text.trim());
 
     final shippingPostalCode = shippingSameAsBilling
         ? billingPostalCodeController.text.trim()
@@ -173,25 +254,20 @@ class _ProfilePageState extends State<ProfilePage> {
       'billing_email': billingEmailController.text.trim(),
       'billing_phone': billingPhoneController.text.trim(),
       'billing_address': billingAddressController.text.trim(),
-      'billing_city': billingCityController.text.trim(),
-      'billing_county': billingCountyController.text.trim(),
+      'billing_city': billingCity,
+      'billing_county': billingCounty,
       'billing_postal_code': billingPostalCodeController.text.trim(),
 
-      'company_name': customerType == 'company'
-          ? companyNameController.text.trim()
-          : '',
-      'company_cui': customerType == 'company'
-          ? companyCuiController.text.trim()
-          : '',
-      'company_reg_com': customerType == 'company'
-          ? companyRegComController.text.trim()
-          : '',
-      'company_iban': customerType == 'company'
-          ? companyIbanController.text.trim()
-          : '',
-      'company_bank': customerType == 'company'
-          ? companyBankController.text.trim()
-          : '',
+      'company_name':
+          customerType == 'company' ? companyNameController.text.trim() : '',
+      'company_cui':
+          customerType == 'company' ? companyCuiController.text.trim() : '',
+      'company_reg_com':
+          customerType == 'company' ? companyRegComController.text.trim() : '',
+      'company_iban':
+          customerType == 'company' ? companyIbanController.text.trim() : '',
+      'company_bank':
+          customerType == 'company' ? companyBankController.text.trim() : '',
       'company_contact_person': customerType == 'company'
           ? companyContactPersonController.text.trim()
           : '',
@@ -263,6 +339,62 @@ class _ProfilePageState extends State<ProfilePage> {
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         decoration: fieldDecoration(label, icon),
+      ),
+    );
+  }
+
+  Widget countyDropdown({
+    required String label,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final counties = romanianCities.keys.toList()..sort();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: value != null && counties.contains(value) ? value : null,
+        isExpanded: true,
+        decoration: fieldDecoration(label, Icons.map_outlined),
+        items: counties
+            .map(
+              (county) => DropdownMenuItem(
+                value: county,
+                child: Text(county),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget cityDropdown({
+    required String label,
+    required String? county,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final cities = county == null ? <String>[] : romanianCities[county] ?? [];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: value != null && cities.contains(value) ? value : null,
+        isExpanded: true,
+        decoration: fieldDecoration(label, Icons.location_city_outlined),
+        items: cities
+            .map(
+              (city) => DropdownMenuItem(
+                value: city,
+                child: Text(
+                  city,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: county == null ? null : onChanged,
       ),
     );
   }
@@ -421,15 +553,28 @@ class _ProfilePageState extends State<ProfilePage> {
           label: 'Adresă',
           icon: Icons.home_outlined,
         ),
-        field(
-          controller: billingCityController,
-          label: 'Oraș',
-          icon: Icons.location_city_outlined,
-        ),
-        field(
-          controller: billingCountyController,
+        countyDropdown(
           label: 'Județ',
-          icon: Icons.map_outlined,
+          value: selectedBillingCounty,
+          onChanged: (value) {
+            setState(() {
+              selectedBillingCounty = value;
+              selectedBillingCity = null;
+              billingCountyController.text = value ?? '';
+              billingCityController.clear();
+            });
+          },
+        ),
+        cityDropdown(
+          label: 'Oraș / Localitate',
+          county: selectedBillingCounty,
+          value: selectedBillingCity,
+          onChanged: (value) {
+            setState(() {
+              selectedBillingCity = value;
+              billingCityController.text = value ?? '';
+            });
+          },
         ),
         field(
           controller: billingPostalCodeController,
@@ -484,15 +629,28 @@ class _ProfilePageState extends State<ProfilePage> {
             label: 'Adresă livrare',
             icon: Icons.home_outlined,
           ),
-          field(
-            controller: shippingCityController,
-            label: 'Oraș livrare',
-            icon: Icons.location_city_outlined,
-          ),
-          field(
-            controller: shippingCountyController,
+          countyDropdown(
             label: 'Județ livrare',
-            icon: Icons.map_outlined,
+            value: selectedShippingCounty,
+            onChanged: (value) {
+              setState(() {
+                selectedShippingCounty = value;
+                selectedShippingCity = null;
+                shippingCountyController.text = value ?? '';
+                shippingCityController.clear();
+              });
+            },
+          ),
+          cityDropdown(
+            label: 'Oraș / Localitate livrare',
+            county: selectedShippingCounty,
+            value: selectedShippingCity,
+            onChanged: (value) {
+              setState(() {
+                selectedShippingCity = value;
+                shippingCityController.text = value ?? '';
+              });
+            },
           ),
           field(
             controller: shippingPostalCodeController,

@@ -104,7 +104,34 @@ class ApiService {
 
     return decoded['data'] ?? [];
   }
+static Future<Map<String, dynamic>> cancelOrder(
+  String orderId, {
+  required String reason,
+  String customReason = '',
+}) async {
+  final response = await http.put(
+    Uri.parse('$apiBaseUrl/orders/$orderId/cancel'),
+    headers: {
+      ...(await authHeaders()),
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'reason': reason,
+      'custom_reason': customReason,
+    }),
+  );
 
+  final decoded = jsonDecode(response.body);
+
+  if (response.statusCode != 200) {
+    throw Exception(
+      decoded['error'] ??
+          'Nu am putut anula comanda.',
+    );
+  }
+
+  return decoded;
+}
   static Future<Map<String, dynamic>> getProfile() async {
     final response = await http.get(
       Uri.parse('$apiBaseUrl/profile'),

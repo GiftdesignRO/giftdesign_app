@@ -7,7 +7,7 @@ import '../models/models.dart';
 
 class ProductPage extends StatefulWidget {
   final Product product;
-  final Function(Product) onAddToCart;
+  final Function(Product, int) onAddToCart;
   final Function(Product) onToggleFavorite;
   final bool isFavorite;
 
@@ -27,6 +27,7 @@ class _ProductPageState extends State<ProductPage> {
   int currentImageIndex = 0;
   late bool isFavorite;
   bool descriptionExpanded = false;
+  int quantity = 1;
 
   @override
   void initState() {
@@ -37,6 +38,14 @@ class _ProductPageState extends State<ProductPage> {
   String get heroTag =>
       widget.product.sku.isNotEmpty ? widget.product.sku : widget.product.title;
 
+  int get stockValue {
+    final parsed = int.tryParse(widget.product.stock.trim());
+    if (parsed == null || parsed < 0) return 0;
+    return parsed;
+  }
+
+  bool get hasStock => stockValue > 0;
+
   String get productDescription => widget.product.description.isNotEmpty
       ? widget.product.description
       : widget.product.shortDescription.isNotEmpty
@@ -44,8 +53,17 @@ class _ProductPageState extends State<ProductPage> {
       : 'Descriere indisponibilă momentan.';
 
   void handleAddToCart() {
+    if (!hasStock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produsul nu este disponibil momentan.'),
+        ),
+      );
+      return;
+    }
+
     HapticFeedback.mediumImpact();
-    widget.onAddToCart(widget.product);
+    widget.onAddToCart(widget.product, quantity);
   }
 
   void handleToggleFavorite() {
@@ -381,6 +399,71 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
+  Widget quantitySelector() {
+    final stock = stockValue;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Cantitate',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: quantity > 1
+                ? () {
+                    setState(() {
+                      quantity--;
+                    });
+                  }
+                : null,
+            icon: const Icon(Icons.remove_circle_outline),
+            color: primaryColor,
+          ),
+          Container(
+            width: 52,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text(
+              quantity.toString(),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: quantity < stock
+                ? () {
+                    setState(() {
+                      quantity++;
+                    });
+                  }
+                : null,
+            icon: const Icon(Icons.add_circle_outline),
+            color: primaryColor,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget premiumBottomBar() {
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -423,9 +506,9 @@ class _ProductPageState extends State<ProductPage> {
           SizedBox(
             height: 54,
             child: ElevatedButton.icon(
-              onPressed: handleAddToCart,
+              onPressed: hasStock ? handleAddToCart : null,
               icon: const Icon(Icons.shopping_bag_outlined),
-              label: const Text('Adaugă'),
+              label: Text(hasStock ? 'Adaugă x$quantity' : 'Stoc 0'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
@@ -542,6 +625,18 @@ class _ProductPageState extends State<ProductPage> {
                   priceSection(),
                   const SizedBox(height: 14),
                   productMeta(),
+                  const SizedBox(height: 10),
+                  Text(
+                    hasStock
+                        ? 'Stoc disponibil: $stockValue buc.'
+                        : 'Stoc indisponibil',
+                    style: TextStyle(
+                      color: hasStock ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  quantitySelector(),
                   const SizedBox(height: 20),
                   trustBadges(),
                   const SizedBox(height: 28),

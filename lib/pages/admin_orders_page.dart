@@ -44,7 +44,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
     final List data = decoded['data'] ?? [];
 
-    return data.whereType<Map<String, dynamic>>().toList().reversed.toList();
+    return data.whereType<Map<String, dynamic>>().toList().toList();
   }
 
   Future<void> refreshOrders() async {
