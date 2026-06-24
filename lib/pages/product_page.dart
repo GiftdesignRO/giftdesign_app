@@ -29,6 +29,14 @@ class _ProductPageState extends State<ProductPage> {
   bool descriptionExpanded = false;
   int quantity = 1;
 
+  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get pageBgColor => isDark ? const Color(0xFF0F0F12) : Colors.white;
+  Color get cardColor => isDark ? const Color(0xFF1B1B20) : Colors.white;
+  Color get surfaceColor => isDark ? const Color(0xFF24242A) : Colors.grey.shade50;
+  Color get textColor => isDark ? Colors.white : Colors.black;
+  Color get mutedTextColor => isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+  Color get borderColor => isDark ? Colors.white.withOpacity(0.10) : Colors.grey.shade200;
+
   @override
   void initState() {
     super.initState();
@@ -138,7 +146,7 @@ class _ProductPageState extends State<ProductPage> {
     return Container(
       height: height,
       width: double.infinity,
-      color: Colors.grey.shade200,
+      color: isDark ? const Color(0xFF24242A) : Colors.grey.shade200,
       child: const Center(
         child: Icon(Icons.image_outlined, size: 72, color: Colors.grey),
       ),
@@ -286,7 +294,8 @@ class _ProductPageState extends State<ProductPage> {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
@@ -295,7 +304,7 @@ class _ProductPageState extends State<ProductPage> {
                 Text(
                   subtitles[index],
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                  style: TextStyle(fontSize: 11, color: mutedTextColor),
                 ),
               ],
             ),
@@ -327,19 +336,19 @@ class _ProductPageState extends State<ProductPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: Colors.grey.shade700),
+          Icon(icon, size: 15, color: mutedTextColor),
           const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey.shade800,
+              color: textColor,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -356,9 +365,13 @@ class _ProductPageState extends State<ProductPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Descriere',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 10),
         AnimatedCrossFade(
@@ -370,11 +383,11 @@ class _ProductPageState extends State<ProductPage> {
             text,
             maxLines: 5,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 15, height: 1.55),
+            style: TextStyle(color: mutedTextColor, fontSize: 15, height: 1.55),
           ),
           secondChild: Text(
             text,
-            style: const TextStyle(fontSize: 15, height: 1.55),
+            style: TextStyle(color: mutedTextColor, fontSize: 15, height: 1.55),
           ),
         ),
         if (shouldCollapse) ...[
@@ -405,16 +418,17 @@ class _ProductPageState extends State<ProductPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'Cantitate',
               style: TextStyle(
+                color: textColor,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
@@ -436,13 +450,14 @@ class _ProductPageState extends State<ProductPage> {
             alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(vertical: 9),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: pageBgColor,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: isDark ? Colors.white.withOpacity(0.16) : Colors.grey.shade300),
             ),
             child: Text(
               quantity.toString(),
-              style: const TextStyle(
+              style: TextStyle(
+                color: textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
@@ -473,7 +488,7 @@ class _ProductPageState extends State<ProductPage> {
         12 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: cardColor.withOpacity(0.96),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.10),
@@ -536,7 +551,7 @@ class _ProductPageState extends State<ProductPage> {
         : [''];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: pageBgColor,
       extendBody: true,
       appBar: AppBar(
         title: Text(
@@ -544,8 +559,8 @@ class _ProductPageState extends State<ProductPage> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: cardColor,
+        foregroundColor: textColor,
         elevation: 0,
         actions: [
           Padding(
@@ -585,7 +600,7 @@ class _ProductPageState extends State<ProductPage> {
                         child: Text(
                           widget.product.category,
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: mutedTextColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -615,7 +630,8 @@ class _ProductPageState extends State<ProductPage> {
                   const SizedBox(height: 8),
                   Text(
                     widget.product.title,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: textColor,
                       fontSize: 27,
                       fontWeight: FontWeight.w900,
                       height: 1.12,
@@ -646,9 +662,9 @@ class _ProductPageState extends State<ProductPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: surfaceColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Row(
                       children: [
@@ -661,7 +677,7 @@ class _ProductPageState extends State<ProductPage> {
                           child: Text(
                             'Perfect pentru cadouri și surprize memorabile.',
                             style: TextStyle(
-                              color: Colors.grey.shade800,
+                              color: textColor,
                               fontWeight: FontWeight.w700,
                               height: 1.35,
                             ),

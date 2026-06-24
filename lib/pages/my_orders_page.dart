@@ -395,7 +395,7 @@ Future<void> cancelOrder(dynamic order) async {
       margin: const EdgeInsets.only(bottom: 9),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8F8),
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF23232A) : const Color(0xFFF8F8F8),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -426,7 +426,10 @@ Future<void> cancelOrder(dynamic order) async {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
                     fontWeight: FontWeight.w700,
                     height: 1.25,
                   ),
@@ -470,7 +473,7 @@ final productsSubtotal = totalValue - shippingAmount;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
@@ -494,7 +497,10 @@ final productsSubtotal = totalValue - shippingAmount;
               Expanded(
                 child: Text(
                   orderNumber,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
                     fontWeight: FontWeight.w900,
                     fontSize: 17,
                   ),
@@ -548,9 +554,12 @@ final productsSubtotal = totalValue - shippingAmount;
                 style: TextStyle(color: Colors.grey.shade700),
               )
             else ...[
-              const Text(
+              Text(
                 'Produse comandate',
                 style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
@@ -679,7 +688,9 @@ infoLine(
           Text(
             '$label: ',
             style: TextStyle(
-              color: Colors.grey.shade700,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade400
+                  : Colors.grey.shade700,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -688,7 +699,11 @@ infoLine(
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: strong ? primaryColor : Colors.black87,
+                color: strong
+                    ? primaryColor
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87),
                 fontWeight: strong ? FontWeight.w900 : FontWeight.w700,
               ),
             ),
@@ -727,7 +742,10 @@ infoLine(
                   Expanded(
                     child: Text(
                       '${orders.length} ${orders.length == 1 ? 'comandă' : 'comenzi'} în contul tău',
-                      style: const TextStyle(
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
@@ -747,11 +765,11 @@ infoLine(
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFF6F6F6),
       appBar: AppBar(
         title: const Text('Comenzile mele'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
         elevation: 0,
       ),
       body: FutureBuilder<List<dynamic>>(

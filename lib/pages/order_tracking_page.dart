@@ -71,13 +71,18 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5);
+    final cardColor = isDark ? const Color(0xFF1B1B20) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text('Order tracking'),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: cardColor,
+        foregroundColor: textColor,
         elevation: 0,
       ),
       body: ListView(
@@ -128,21 +133,22 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         children: [
           TextField(
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
             controller: trackingController,
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => searchOrder(),
             decoration: InputDecoration(
               hintText: 'Ex: GD-1024 sau AWB123456',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: Icon(Icons.search, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade400 : null),
               filled: true,
-              fillColor: const Color(0xFFF7F7F7),
+              fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262D) : const Color(0xFFF7F7F7),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -182,7 +188,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.grey.shade200),
           ),
@@ -207,15 +213,12 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                   children: [
                     Text(
                       searchedCode,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold,fontSize: 17,color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Status curent: În pregătire',
-                      style: TextStyle(color: Colors.grey.shade700),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade400 : Colors.grey.shade700),
                     ),
                   ],
                 ),
@@ -228,7 +231,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.grey.shade200),
           ),
@@ -259,7 +262,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
               width: step.active ? 42 : 36,
               height: step.active ? 42 : 36,
               decoration: BoxDecoration(
-                color: step.done ? primaryColor : Colors.white,
+                color: step.done ? primaryColor : (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(color: color, width: 2),
                 boxShadow: step.active
@@ -293,13 +296,13 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: step.done ? Colors.black : Colors.grey.shade600,
+                    color: step.done ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black) : Colors.grey.shade600,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   step.subtitle,
-                  style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade400 : Colors.grey.shade700, height: 1.25),
                 ),
               ],
             ),

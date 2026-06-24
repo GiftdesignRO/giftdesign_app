@@ -1413,6 +1413,78 @@ class _HomePageState extends State<HomePage> {
     return ranked.take(8).toList();
   }
 
+
+  ThemeData darkAwareTheme() {
+    final base = darkMode ? ThemeData.dark() : ThemeData.light();
+
+    return base.copyWith(
+      scaffoldBackgroundColor: appBackgroundColor,
+      cardColor: appCardColor,
+      primaryColor: primaryColor,
+      colorScheme: base.colorScheme.copyWith(
+        primary: primaryColor,
+        surface: appCardColor,
+        background: appBackgroundColor,
+        onSurface: appTextColor,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: appCardColor,
+        foregroundColor: appTextColor,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      cardTheme: CardThemeData(
+        color: appCardColor,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: appSurfaceColor,
+        hintStyle: TextStyle(color: appMutedTextColor),
+        labelStyle: TextStyle(color: appMutedTextColor),
+        prefixIconColor: appMutedTextColor,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: appBorderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: primaryColor, width: 2),
+        ),
+      ),
+      dividerColor: appBorderColor,
+      expansionTileTheme: ExpansionTileThemeData(
+        backgroundColor: appCardColor,
+        collapsedBackgroundColor: appCardColor,
+        textColor: appTextColor,
+        collapsedTextColor: appTextColor,
+        iconColor: primaryColor,
+        collapsedIconColor: primaryColor,
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: appTextColor,
+        iconColor: appMutedTextColor,
+        subtitleTextStyle: TextStyle(color: appMutedTextColor),
+      ),
+      textTheme: base.textTheme.apply(
+        bodyColor: appTextColor,
+        displayColor: appTextColor,
+      ),
+    );
+  }
+
+  Route<T> darkAwareRoute<T>(Widget page) {
+    return MaterialPageRoute<T>(
+      builder: (_) => Theme(
+        data: darkAwareTheme(),
+        child: page,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -3174,8 +3246,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ProductPage(
+      darkAwareRoute(
+        ProductPage(
           product: product,
           onAddToCart: addToCart,
           onToggleFavorite: toggleFavorite,
@@ -3870,9 +3942,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const AdminOrdersPage(),
-          ),
+          darkAwareRoute(const AdminOrdersPage()),
         );
       },
       icon: const Icon(Icons.admin_panel_settings),
@@ -3898,9 +3968,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const AdminUsersPage(),
-          ),
+          darkAwareRoute(const AdminUsersPage()),
         );
       },
       icon: const Icon(Icons.people_alt_outlined),
@@ -4060,7 +4128,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ProfilePage()),
+                darkAwareRoute(const ProfilePage()),
               );
             },
             child: Padding(
@@ -4114,8 +4182,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => MyOrdersPage(
+                darkAwareRoute(
+                  MyOrdersPage(
                     onReorder: reorderOrderItems,
                   ),
                 ),
@@ -4172,7 +4240,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const OrderTrackingPage()),
+                darkAwareRoute(const OrderTrackingPage()),
               );
             },
             child: Padding(
@@ -4244,8 +4312,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ActivityPage(
+                      darkAwareRoute(
+                        ActivityPage(
                           title: 'Produse vizualizate',
                           products: recentlyViewed,
                           onProductTap: openProduct,
@@ -4267,8 +4335,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ActivityPage(
+                      darkAwareRoute(
+                        ActivityPage(
                           title: 'Adăugate în coș',
                           products: addedToCartHistory,
                           onProductTap: openProduct,
@@ -4290,8 +4358,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ActivityPage(
+                      darkAwareRoute(
+                        ActivityPage(
                           title: 'Căutări',
                           searches: searchHistory,
                           onProductTap: (_) {},
@@ -5077,8 +5145,8 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
 
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => CheckoutPage(
+                            darkAwareRoute(
+                              CheckoutPage(
                                 items: cart.values.toList(),
                                 total: finalTotal,
                                 onOrderDone: clearCart,

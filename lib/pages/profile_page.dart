@@ -307,20 +307,36 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  InputDecoration fieldDecoration(String label, IconData icon) {
+  InputDecoration fieldDecoration(
+    BuildContext context,
+    String label,
+    IconData icon,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF1B1B20) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.10) : Colors.grey.shade300;
+    final mutedColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      labelStyle: TextStyle(color: mutedColor),
+      prefixIcon: Icon(icon, color: mutedColor),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: surfaceColor,
+      hintStyle: TextStyle(color: mutedColor),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: primaryColor, width: 2),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: borderColor),
       ),
     );
   }
@@ -338,7 +354,12 @@ class _ProfilePageState extends State<ProfilePage> {
         controller: controller,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
-        decoration: fieldDecoration(label, icon),
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+        ),
+        decoration: fieldDecoration(context, label, icon),
       ),
     );
   }
@@ -355,7 +376,15 @@ class _ProfilePageState extends State<ProfilePage> {
       child: DropdownButtonFormField<String>(
         value: value != null && counties.contains(value) ? value : null,
         isExpanded: true,
-        decoration: fieldDecoration(label, Icons.map_outlined),
+        dropdownColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1B1B20)
+            : Colors.white,
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+        ),
+        decoration: fieldDecoration(context, label, Icons.map_outlined),
         items: counties
             .map(
               (county) => DropdownMenuItem(
@@ -382,7 +411,15 @@ class _ProfilePageState extends State<ProfilePage> {
       child: DropdownButtonFormField<String>(
         value: value != null && cities.contains(value) ? value : null,
         isExpanded: true,
-        decoration: fieldDecoration(label, Icons.location_city_outlined),
+        dropdownColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1B1B20)
+            : Colors.white,
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+        ),
+        decoration: fieldDecoration(context, label, Icons.location_city_outlined),
         items: cities
             .map(
               (city) => DropdownMenuItem(
@@ -404,13 +441,18 @@ class _ProfilePageState extends State<ProfilePage> {
     required IconData icon,
     required List<Widget> children,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1B1B20) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.10) : Colors.grey.shade200;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: cardColor,
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -423,7 +465,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(width: 10),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -448,7 +491,7 @@ class _ProfilePageState extends State<ProfilePage> {
           groupValue: customerType,
           activeColor: primaryColor,
           contentPadding: EdgeInsets.zero,
-          title: const Text('Persoană fizică'),
+          title: Text('Persoană fizică', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
           onChanged: (value) {
             if (value == null) return;
             setState(() {
@@ -461,7 +504,7 @@ class _ProfilePageState extends State<ProfilePage> {
           groupValue: customerType,
           activeColor: primaryColor,
           contentPadding: EdgeInsets.zero,
-          title: const Text('Persoană juridică'),
+          title: Text('Persoană juridică', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87)),
           onChanged: (value) {
             if (value == null) return;
             setState(() {
@@ -595,9 +638,14 @@ class _ProfilePageState extends State<ProfilePage> {
           value: shippingSameAsBilling,
           activeColor: primaryColor,
           contentPadding: EdgeInsets.zero,
-          title: const Text(
+          title: Text(
             'Datele de livrare sunt identice cu cele de facturare',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           onChanged: (value) {
             setState(() {
@@ -666,12 +714,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5);
+    final surfaceColor = isDark ? const Color(0xFF1B1B20) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text('Profilul meu'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: surfaceColor,
+        foregroundColor: textColor,
         elevation: 0,
       ),
       body: loading
@@ -694,7 +747,7 @@ class _ProfilePageState extends State<ProfilePage> {
       bottomNavigationBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-          color: Colors.white,
+          color: surfaceColor,
           child: SizedBox(
             height: 54,
             width: double.infinity,

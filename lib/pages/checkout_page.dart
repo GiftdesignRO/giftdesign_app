@@ -229,7 +229,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return InputDecoration(
       labelText: label,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -250,10 +250,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
         : romanianCities[selectedCounty] ?? <String>[];
 
     return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F0F12) : null,
       appBar: AppBar(
         title: const Text('Checkout'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
       ),
       body: Form(
   key: _formKey,

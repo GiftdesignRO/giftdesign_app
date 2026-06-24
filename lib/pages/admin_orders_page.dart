@@ -172,33 +172,42 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final scaffoldBg = theme.scaffoldBackgroundColor;
+    final appBarBg = isDark ? const Color(0xFF121212) : Colors.white;
+    final appBarFg = isDark ? Colors.white : Colors.black;
+    final inputFill = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final hintColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: const Text('Admin comenzi'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: appBarBg,
+        foregroundColor: appBarFg,
+        elevation: isDark ? 0 : 1,
         actions: [
-  IconButton(
-    onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
-    icon: syncingMerchantPro
-        ? const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
-        : const Icon(Icons.sync),
-    tooltip: 'Sincronizează MerchantPro',
-  ),
-  IconButton(
-    onPressed: refreshOrders,
-    icon: const Icon(Icons.refresh),
-    tooltip: 'Reîncarcă',
-  ),
-],
+          IconButton(
+            onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
+            icon: syncingMerchantPro
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.sync),
+            tooltip: 'Sincronizează MerchantPro',
+          ),
+          IconButton(
+            onPressed: refreshOrders,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Reîncarcă',
+          ),
+        ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: ordersFuture,
@@ -214,6 +223,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                 child: Text(
                   'Eroare: ${snapshot.error}',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                 ),
               ),
             );
@@ -251,41 +261,42 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                
                 SizedBox(
-  height: 48,
-  width: double.infinity,
-  child: ElevatedButton.icon(
-    onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
-    icon: syncingMerchantPro
-        ? const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
-        : const Icon(Icons.sync),
-    label: Text(
-      syncingMerchantPro
-          ? 'Se sincronizează cu MerchantPro...'
-          : 'Sincronizează cu MerchantPro',
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: primaryColor,
-      foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
-      textStyle: const TextStyle(
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ),
-),
-const SizedBox(height: 14),
+                  height: 48,
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: syncingMerchantPro ? null : syncMerchantProOrders,
+                    icon: syncingMerchantPro
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.sync),
+                    label: Text(
+                      syncingMerchantPro
+                          ? 'Se sincronizează cu MerchantPro...'
+                          : 'Sincronizează cu MerchantPro',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 TextField(
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                  cursorColor: primaryColor,
                   onChanged: (value) {
                     setState(() {
                       searchQuery = value;
@@ -293,20 +304,36 @@ const SizedBox(height: 14),
                   },
                   decoration: InputDecoration(
                     hintText: 'Caută după număr, client, email, telefon...',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: TextStyle(color: hintColor),
+                    prefixIcon: Icon(Icons.search, color: hintColor),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: inputFill,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.grey.shade800 : Colors.transparent,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: primaryColor),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
                 if (visibleOrders.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 60),
-                    child: Center(child: Text('Nu există comenzi')),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 60),
+                    child: Center(
+                      child: Text(
+                        'Nu există comenzi',
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                      ),
+                    ),
                   )
                 else
                   ...visibleOrders.map((order) => OrderAdminCard(order: order)),
@@ -332,14 +359,23 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final subtitleColor = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+    final shadowColor = isDark ? Colors.transparent : Colors.black.withOpacity(0.04);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.transparent,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -348,7 +384,7 @@ class _StatCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: primaryColor.withOpacity(0.1),
+            backgroundColor: primaryColor.withOpacity(isDark ? 0.22 : 0.1),
             child: Icon(icon, color: primaryColor),
           ),
           const SizedBox(width: 10),
@@ -356,13 +392,14 @@ class _StatCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: Colors.grey.shade700)),
+                Text(title, style: TextStyle(color: subtitleColor)),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -419,6 +456,14 @@ class OrderAdminCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final innerCardColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF7F7F7);
+    final dividerColor = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+    final textColor = theme.colorScheme.onSurface;
+    final subtitleColor = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+
     final customer = order['customer'] is Map ? order['customer'] as Map : {};
     final items = order['items'] is List ? order['items'] as List : [];
     final orderNumber = textValue(order['order_number']).isNotEmpty
@@ -427,158 +472,191 @@ class OrderAdminCard extends StatelessWidget {
     final status = textValue(order['status']).isNotEmpty
         ? textValue(order['status'])
         : 'Nouă';
-        final cancelReason = textValue(order['cancel_reason']);
-        final cancelledAt = textValue(order['cancelled_at']);
-        final cancelledBy = textValue(order['cancelled_by']);
+    final cancelReason = textValue(order['cancel_reason']);
+    final cancelledAt = textValue(order['cancelled_at']);
+    final cancelledBy = textValue(order['cancelled_by']);
 
     return Card(
+      color: cardColor,
+      elevation: isDark ? 0 : 1,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                orderNumber,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: statusColor(status).withOpacity(0.12),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                status,
-                style: TextStyle(
-                  color: statusColor(status),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: isDark ? Colors.grey.shade800 : Colors.transparent,
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Theme(
+        data: theme.copyWith(
+          dividerColor: Colors.transparent,
+          iconTheme: IconThemeData(color: textColor),
+        ),
+        child: ExpansionTile(
+          collapsedIconColor: textColor,
+          iconColor: textColor,
+          tilePadding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+          childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          title: Row(
             children: [
-              Text(
-                textValue(customer['name']).isEmpty
-                    ? 'Client fără nume'
-                    : textValue(customer['name']),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              Expanded(
+                child: Text(
+                  orderNumber,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                  ),
+                ),
               ),
-              const SizedBox(height: 2),
-              Text(formatDate(order['created_at'])),
-              const SizedBox(height: 4),
-              Text(
-                '${readTotal(order['total']).toStringAsFixed(2)} Lei',
-                style: const TextStyle(
-                  color: primaryColor,
-                  fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor(status).withOpacity(isDark ? 0.20 : 0.12),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: statusColor(status),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        children: [
-          const Divider(),
-          _InfoRow(label: 'Email', value: textValue(customer['email'])),
-          _InfoRow(label: 'Telefon', value: textValue(customer['phone'])),
-          _InfoRow(
-            label: 'Adresă',
-            value:
-                '${textValue(customer['address'])}, ${textValue(customer['city'])}, ${textValue(customer['county'])}',
-          ),
-          _InfoRow(
-            label: 'Livrare',
-            value: textValue(order['delivery_method']),
-          ),
-          _InfoRow(label: 'Plată', value: textValue(order['payment_method'])),
-          if (cancelReason.isNotEmpty) ...[
-  const SizedBox(height: 10),
-  Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.red.withOpacity(0.08),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: Colors.red.withOpacity(0.20),
-      ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Detalii anulare',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _InfoRow(
-          label: 'Motiv',
-          value: cancelReason,
-        ),
-        _InfoRow(
-          label: 'Anulată la',
-          value: formatDate(cancelledAt),
-        ),
-        _InfoRow(
-          label: 'De',
-          value: cancelledBy,
-        ),
-      ],
-    ),
-  ),
-],
-          const SizedBox(height: 12),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Produse',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  textValue(customer['name']).isEmpty
+                      ? 'Client fără nume'
+                      : textValue(customer['name']),
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatDate(order['created_at']),
+                  style: TextStyle(color: subtitleColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${readTotal(order['total']).toStringAsFixed(2)} Lei',
+                  style: const TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          ...items.map((item) {
-            final map = item is Map ? item : {};
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F7F7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      textValue(map['title']),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+          children: [
+            Divider(color: dividerColor),
+            _InfoRow(label: 'Email', value: textValue(customer['email'])),
+            _InfoRow(label: 'Telefon', value: textValue(customer['phone'])),
+            _InfoRow(
+              label: 'Adresă',
+              value:
+                  '${textValue(customer['address'])}, ${textValue(customer['city'])}, ${textValue(customer['county'])}',
+            ),
+            _InfoRow(
+              label: 'Livrare',
+              value: textValue(order['delivery_method']),
+            ),
+            _InfoRow(label: 'Plată', value: textValue(order['payment_method'])),
+            if (cancelReason.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(isDark ? 0.14 : 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.red.withOpacity(isDark ? 0.32 : 0.20),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Detalii anulare',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${textValue(map['quantity'])} x ${textValue(map['price'])}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Motiv',
+                      value: cancelReason,
+                    ),
+                    _InfoRow(
+                      label: 'Anulată la',
+                      value: formatDate(cancelledAt),
+                    ),
+                    _InfoRow(
+                      label: 'De',
+                      value: cancelledBy,
+                    ),
+                  ],
+                ),
               ),
-            );
-          }),
-        ],
+            ],
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Produse',
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...items.map((item) {
+              final map = item is Map ? item : {};
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: innerCardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.grey.shade800 : Colors.transparent,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        textValue(map['title']),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: textColor),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${textValue(map['quantity'])} x ${textValue(map['price'])}',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -594,6 +672,11 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final labelColor = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+    final valueColor = theme.colorScheme.onSurface;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
       child: Row(
@@ -604,12 +687,17 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               '$label:',
               style: TextStyle(
-                color: Colors.grey.shade700,
+                color: labelColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: valueColor),
+            ),
+          ),
         ],
       ),
     );

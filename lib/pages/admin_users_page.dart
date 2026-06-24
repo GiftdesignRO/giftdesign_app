@@ -84,11 +84,11 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text('Admin clienți'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
         actions: [
           IconButton(
             onPressed: refreshUsers,
@@ -158,7 +158,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     hintText: 'Caută după nume, email, telefon, firmă...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
@@ -457,7 +457,7 @@ class _AdminUserEditPageState extends State<AdminUserEditPage> {
       labelText: label,
       prefixIcon: Icon(icon),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -838,11 +838,11 @@ class _AdminUserEditPageState extends State<AdminUserEditPage> {
         : textValue(widget.user['name']);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1B1B20) : Colors.white,
+        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(

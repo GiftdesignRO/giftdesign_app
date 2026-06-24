@@ -25,6 +25,9 @@ class ActivityPage extends StatelessWidget {
     final isSearchPage = searches.isNotEmpty;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF0F0F12)
+          : null,
       appBar: AppBar(title: Text(title)),
       body: isSearchPage ? buildSearches() : buildProducts(),
     );
@@ -43,6 +46,9 @@ class ActivityPage extends StatelessWidget {
         final image = product.images.isNotEmpty ? product.images.first : '';
 
         return Card(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF1B1B20)
+              : null,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -56,7 +62,7 @@ class ActivityPage extends StatelessWidget {
                   ? Container(
                       width: 62,
                       height: 62,
-                      color: Colors.grey.shade200,
+                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2A2A32) : Colors.grey.shade200,
                       child: const Icon(Icons.image_outlined),
                     )
                   : CachedNetworkImage(
@@ -98,6 +104,9 @@ class ActivityPage extends StatelessWidget {
         final query = searches[index];
 
         return Card(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF1B1B20)
+              : null,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
