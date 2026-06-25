@@ -494,6 +494,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             'price': item.product.price,
                             'quantity': item.quantity,
                             'sku': item.product.sku,
+                            'id': item.product.id,
                           };
                         }).toList(),
                         'total': widget.total,
