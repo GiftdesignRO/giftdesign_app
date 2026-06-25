@@ -8,6 +8,7 @@ import '../core/constants.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'package:flutter/services.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 class CheckoutPage extends StatefulWidget {
   final List<CartItem> items;
@@ -476,31 +477,78 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   try {
                     await saveCheckoutData();
 
+                    final orderPayload = {
+                      'customer': {
+                        'name': nameController.text.trim(),
+                        'phone': phoneController.text.trim(),
+                        'email': emailController.text.trim(),
+                        'county': selectedCounty,
+                        'city': selectedCity,
+                        'address': addressController.text.trim(),
+                      },
+                      'items': widget.items.map((item) {
+                        return {
+                          'title': item.product.title,
+                          'price': item.product.price,
+                          'quantity': item.quantity,
+                          'sku': item.product.sku,
+                        };
+                      }).toList(),
+                      'total': widget.total,
+                      'delivery_method': deliveryMethod,
+                      'payment_method': paymentMethod,
+                    };
+
+                    if (paymentMethod == 'Card online') {
+                      final response = await http.post(
+                        Uri.parse('$apiBaseUrl/payments/euplatesc/create'),
+                        headers: await ApiService.authHeaders(),
+                        body: jsonEncode(orderPayload),
+                      );
+
+                      if (!mounted) return;
+
+                      final decoded = jsonDecode(response.body);
+
+                      if (response.statusCode == 200 && decoded['success'] == true) {
+                        final paymentUrl = decoded['payment_url']?.toString() ?? '';
+                        final fields = Map<String, dynamic>.from(decoded['fields'] ?? {});
+
+                        if (paymentUrl.isEmpty || fields.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Nu am primit datele de plată.'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => EuplatescPaymentPage(
+                              paymentUrl: paymentUrl,
+                              fields: fields,
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            decoded['error']?.toString() ??
+                                'Plata cu cardul nu a putut fi inițiată.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
                     final response = await http.post(
-  Uri.parse('$apiBaseUrl/orders'),
-  headers: await ApiService.authHeaders(),
-                      body: jsonEncode({
-                        'customer': {
-                          'name': nameController.text.trim(),
-                          'phone': phoneController.text.trim(),
-                          'email': emailController.text.trim(),
-                          'county': selectedCounty,
-                          'city': selectedCity,
-                          'address': addressController.text.trim(),
-                        },
-                        'items': widget.items.map((item) {
-                          return {
-                            'title': item.product.title,
-                            'price': item.product.price,
-                            'quantity': item.quantity,
-                            'sku': item.product.sku,
-                            'id': item.product.id,
-                          };
-                        }).toList(),
-                        'total': widget.total,
-                        'delivery_method': deliveryMethod,
-                        'payment_method': paymentMethod,
-                      }),
+                      Uri.parse('$apiBaseUrl/orders'),
+                      headers: await ApiService.authHeaders(),
+                      body: jsonEncode(orderPayload),
                     );
 
                     if (!mounted) return;
@@ -554,6 +602,81 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class EuplatescPaymentPage extends StatefulWidget {
+  final String paymentUrl;
+  final Map<String, dynamic> fields;
+
+  const EuplatescPaymentPage({
+    super.key,
+    required this.paymentUrl,
+    required this.fields,
+  });
+
+  @override
+  State<EuplatescPaymentPage> createState() => _EuplatescPaymentPageState();
+}
+
+class _EuplatescPaymentPageState extends State<EuplatescPaymentPage> {
+  late final WebViewController controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadHtmlString(
+        _buildPaymentFormHtml(widget.paymentUrl, widget.fields),
+        baseUrl: widget.paymentUrl,
+      );
+  }
+
+  String _escape(String value) {
+    return const HtmlEscape().convert(value);
+  }
+
+  String _buildPaymentFormHtml(String paymentUrl, Map<String, dynamic> fields) {
+    final inputs = fields.entries.map((entry) {
+      return '<input type="hidden" name="${_escape(entry.key)}" value="${_escape(entry.value?.toString() ?? '')}">';
+    }).join('\n');
+
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; text-align: center; }
+    .box { margin-top: 60px; }
+    button { padding: 14px 20px; border: 0; border-radius: 10px; font-weight: bold; }
+  </style>
+</head>
+<body onload="document.getElementById('paymentForm').submit();">
+  <div class="box">
+    <h3>Te redirecționăm către plata securizată...</h3>
+    <p>Dacă pagina nu pornește automat, apasă butonul de mai jos.</p>
+    <form id="paymentForm" method="POST" action="${_escape(paymentUrl)}">
+      $inputs
+      <button type="submit">Continuă către plată</button>
+    </form>
+  </div>
+</body>
+</html>
+""";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Plată card'),
+      ),
+      body: WebViewWidget(controller: controller),
     );
   }
 }
