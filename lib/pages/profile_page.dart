@@ -734,7 +734,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 16,
                 16,
                 16,
-                110 + MediaQuery.of(context).padding.bottom,
+                130 + MediaQuery.of(context).padding.bottom,
               ),
               children: [
                 customerTypeSelector(),

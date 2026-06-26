@@ -29,17 +29,22 @@ class ActivityPage extends StatelessWidget {
           ? const Color(0xFF0F0F12)
           : null,
       appBar: AppBar(title: Text(title)),
-      body: isSearchPage ? buildSearches() : buildProducts(),
+      body: isSearchPage ? buildSearches(context) : buildProducts(context),
     );
   }
 
-  Widget buildProducts() {
+  Widget buildProducts(BuildContext context) {
     if (products.isEmpty) {
       return const Center(child: Text('Nu există produse aici încă.'));
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        130 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: products.length,
       itemBuilder: (context, index) {
         final product = products[index];
@@ -92,13 +97,18 @@ class ActivityPage extends StatelessWidget {
     );
   }
 
-  Widget buildSearches() {
+  Widget buildSearches(BuildContext context) {
     if (searches.isEmpty) {
       return const Center(child: Text('Nu există căutări încă.'));
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        130 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: searches.length,
       itemBuilder: (context, index) {
         final query = searches[index];

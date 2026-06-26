@@ -1525,8 +1525,11 @@ class _HomePageState extends State<HomePage> {
         color: appBackgroundColor,
         child: pages[selectedIndex],
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 6),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           boxShadow: [
@@ -1636,6 +1639,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -1970,7 +1974,12 @@ class _HomePageState extends State<HomePage> {
                   ..sort();
 
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                130 + MediaQuery.of(context).padding.bottom,
+              ),
               children: [
                 Card(
                   color: appCardColor,
@@ -3683,7 +3692,12 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
     final list = favorites.toList();
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        130 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: list.length,
       itemBuilder: (context, index) {
         final product = list[index];
@@ -3884,7 +3898,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           20,
           20,
           20,
-          170 + MediaQuery.of(context).padding.bottom,
+          210 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
           const SizedBox(height: 30),
@@ -4020,7 +4034,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         20,
         20,
         20,
-        170 + MediaQuery.of(context).padding.bottom,
+        210 + MediaQuery.of(context).padding.bottom,
       ),
       children: [
         const SizedBox(height: 18),
