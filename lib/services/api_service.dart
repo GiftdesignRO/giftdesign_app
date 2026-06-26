@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -13,50 +14,71 @@ class ApiService {
     final user = await SessionService.loadUser();
 
     final token = user['token'];
-    // print('🔥🔥🔥 USER DATA: $user');
-    // print('🔥🔥🔥 TOKEN: $token');
 
     return {
       'Content-Type': 'application/json',
-      if (token != null && token.isNotEmpty)
-        'Authorization': 'Bearer $token',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
 
   static Future<List<Product>> fetchProducts() async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/products'),
-      headers: await authHeaders(),
-    );
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/products'),
+            headers: await authHeaders(),
+          )
+          .timeout(const Duration(seconds: 45));
 
-    if (response.statusCode != 200) {
-      throw Exception('Nu am putut încărca produsele din MerchantPro');
+      if (response.statusCode != 200) {
+        throw Exception('Nu am putut încărca produsele din MerchantPro');
+      }
+
+      final decoded = jsonDecode(response.body);
+      final List data = decoded['data'] ?? [];
+
+      return data.map((item) => Product.fromJson(item)).toList();
+    } on TimeoutException {
+      throw Exception(
+        'Conexiunea cu serverul a durat prea mult. Încearcă din nou.',
+      );
+    } catch (_) {
+      throw Exception(
+        'Nu am putut încărca produsele. Verifică internetul și încearcă din nou.',
+      );
     }
-
-    final decoded = jsonDecode(response.body);
-    final List data = decoded['data'] ?? [];
-
-    return data.map((item) => Product.fromJson(item)).toList();
   }
 
   static Future<List<CategoryData>> fetchCategories() async {
-    final response = await http.get(
-      Uri.parse('$apiBaseUrl/categories'),
-      headers: await authHeaders(),
-    );
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/categories'),
+            headers: await authHeaders(),
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode != 200) {
-      throw Exception('Nu am putut încărca categoriile din MerchantPro');
+      if (response.statusCode != 200) {
+        throw Exception('Nu am putut încărca categoriile din MerchantPro');
+      }
+
+      final decoded = jsonDecode(response.body);
+      final List data = decoded['data'] ?? [];
+
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map((item) => CategoryData.fromJson(item))
+          .where((category) => category.name.trim().isNotEmpty)
+          .toList();
+    } on TimeoutException {
+      throw Exception(
+        'Conexiunea cu serverul a durat prea mult. Încearcă din nou.',
+      );
+    } catch (_) {
+      throw Exception(
+        'Nu am putut încărca categoriile. Verifică internetul și încearcă din nou.',
+      );
     }
-
-    final decoded = jsonDecode(response.body);
-    final List data = decoded['data'] ?? [];
-
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map((item) => CategoryData.fromJson(item))
-        .where((category) => category.name.trim().isNotEmpty)
-        .toList();
   }
 
   static Future<http.Response> register({
@@ -89,7 +111,6 @@ class ApiService {
     );
   }
 
-
   static Future<List<dynamic>> fetchOrders() async {
     final response = await http.get(
       Uri.parse('$apiBaseUrl/orders'),
@@ -104,34 +125,35 @@ class ApiService {
 
     return decoded['data'] ?? [];
   }
-static Future<Map<String, dynamic>> cancelOrder(
-  String orderId, {
-  required String reason,
-  String customReason = '',
-}) async {
-  final response = await http.put(
-    Uri.parse('$apiBaseUrl/orders/$orderId/cancel'),
-    headers: {
-      ...(await authHeaders()),
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({
-      'reason': reason,
-      'custom_reason': customReason,
-    }),
-  );
 
-  final decoded = jsonDecode(response.body);
-
-  if (response.statusCode != 200) {
-    throw Exception(
-      decoded['error'] ??
-          'Nu am putut anula comanda.',
+  static Future<Map<String, dynamic>> cancelOrder(
+    String orderId, {
+    required String reason,
+    String customReason = '',
+  }) async {
+    final response = await http.put(
+      Uri.parse('$apiBaseUrl/orders/$orderId/cancel'),
+      headers: {
+        ...(await authHeaders()),
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'reason': reason,
+        'custom_reason': customReason,
+      }),
     );
+
+    final decoded = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        decoded['error'] ?? 'Nu am putut anula comanda.',
+      );
+    }
+
+    return decoded;
   }
 
-  return decoded;
-}
   static Future<Map<String, dynamic>> getProfile() async {
     final response = await http.get(
       Uri.parse('$apiBaseUrl/profile'),
@@ -149,7 +171,7 @@ static Future<Map<String, dynamic>> cancelOrder(
     return decoded;
   }
 
-    static Future<Map<String, dynamic>> saveProfile({
+  static Future<Map<String, dynamic>> saveProfile({
     required Map<String, dynamic> profile,
   }) async {
     final response = await http.post(
