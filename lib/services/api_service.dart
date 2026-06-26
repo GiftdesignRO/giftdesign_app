@@ -25,7 +25,7 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$apiBaseUrl/products'),
+            Uri.parse('$apiBaseUrl/products-lite'),
             headers: await authHeaders(),
           )
           .timeout(const Duration(seconds: 45));
@@ -45,6 +45,42 @@ class ApiService {
     } catch (_) {
       throw Exception(
         'Nu am putut încărca produsele. Verifică internetul și încearcă din nou.',
+      );
+    }
+  }
+
+
+  static Future<Product> fetchProductDetails(String sku) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$apiBaseUrl/product-details/${Uri.encodeComponent(sku)}'),
+            headers: await authHeaders(),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          decoded['error'] ?? 'Nu am putut incarca detaliile produsului.',
+        );
+      }
+
+      final data = decoded['data'];
+
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Raspuns invalid pentru produs.');
+      }
+
+      return Product.fromJson(data);
+    } on TimeoutException {
+      throw Exception(
+        'Detaliile produsului se incarca prea greu. Incearca din nou.',
+      );
+    } catch (_) {
+      throw Exception(
+        'Nu am putut incarca detaliile produsului.',
       );
     }
   }
