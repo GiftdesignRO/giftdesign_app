@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../core/constants.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 
 class ProductPage extends StatefulWidget {
   final Product product;
@@ -29,6 +30,12 @@ class _ProductPageState extends State<ProductPage> {
   bool descriptionExpanded = false;
   int quantity = 1;
 
+  Product? fullProduct;
+  bool productDetailsLoading = false;
+  String productDetailsError = '';
+
+  Product get activeProduct => fullProduct ?? widget.product;
+
   bool get isDark => Theme.of(context).brightness == Brightness.dark;
   Color get pageBgColor => isDark ? const Color(0xFF0F0F12) : Colors.white;
   Color get cardColor => isDark ? const Color(0xFF1B1B20) : Colors.white;
@@ -41,23 +48,65 @@ class _ProductPageState extends State<ProductPage> {
   void initState() {
     super.initState();
     isFavorite = widget.isFavorite;
+    loadProductDetails();
   }
 
+  Future<void> loadProductDetails() async {
+  final productId = activeProduct.id.trim();
+
+  debugPrint('LOAD PRODUCT DETAILS ID: $productId');
+
+  if (productId.isEmpty) {
+    debugPrint('LOAD PRODUCT DETAILS SKIPPED: empty ID');
+    return;
+  }
+
+  setState(() {
+    productDetailsLoading = true;
+    productDetailsError = '';
+  });
+
+  try {
+    debugPrint('Calling product details API for ID: $productId');
+
+    final details = await ApiService.fetchProductDetails(productId);
+
+    debugPrint('Product details API OK: ${details.title}');
+
+    if (!mounted) return;
+
+    setState(() {
+      fullProduct = details;
+      productDetailsLoading = false;
+      currentImageIndex = 0;
+    });
+  } catch (error) {
+    debugPrint('Product details API ERROR: $error');
+
+    if (!mounted) return;
+
+    setState(() {
+      productDetailsLoading = false;
+      productDetailsError = error.toString();
+    });
+  }
+}
+
   String get heroTag =>
-      widget.product.sku.isNotEmpty ? widget.product.sku : widget.product.title;
+      activeProduct.sku.isNotEmpty ? activeProduct.sku : activeProduct.title;
 
   int get stockValue {
-    final parsed = int.tryParse(widget.product.stock.trim());
+    final parsed = int.tryParse(activeProduct.stock.trim());
     if (parsed == null || parsed < 0) return 0;
     return parsed;
   }
 
   bool get hasStock => stockValue > 0;
 
-  String get productDescription => widget.product.description.isNotEmpty
-      ? widget.product.description
-      : widget.product.shortDescription.isNotEmpty
-      ? widget.product.shortDescription
+  String get productDescription => activeProduct.description.isNotEmpty
+      ? activeProduct.description
+      : activeProduct.shortDescription.isNotEmpty
+      ? activeProduct.shortDescription
       : 'Descriere indisponibilă momentan.';
 
   void handleAddToCart() {
@@ -71,7 +120,7 @@ class _ProductPageState extends State<ProductPage> {
     }
 
     HapticFeedback.mediumImpact();
-    widget.onAddToCart(widget.product, quantity);
+    widget.onAddToCart(activeProduct, quantity);
   }
 
   void handleToggleFavorite() {
@@ -79,11 +128,11 @@ class _ProductPageState extends State<ProductPage> {
     setState(() {
       isFavorite = !isFavorite;
     });
-    widget.onToggleFavorite(widget.product);
+    widget.onToggleFavorite(activeProduct);
   }
 
   Widget priceSection({double priceSize = 32, double oldPriceSize = 18}) {
-    final product = widget.product;
+    final product = activeProduct;
     final hasDiscount =
         product.oldPrice.isNotEmpty && product.discountPercent > 0;
 
@@ -207,7 +256,7 @@ class _ProductPageState extends State<ProductPage> {
             ),
           ),
         ),
-        if (widget.product.discountPercent > 0)
+        if (activeProduct.discountPercent > 0)
           Positioned(
             left: 18,
             bottom: 22,
@@ -225,7 +274,7 @@ class _ProductPageState extends State<ProductPage> {
                 ],
               ),
               child: Text(
-                '-${widget.product.discountPercent}% reducere',
+                '-${activeProduct.discountPercent}% reducere',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -317,13 +366,13 @@ class _ProductPageState extends State<ProductPage> {
   Widget productMeta() {
     final chips = <Widget>[];
 
-    if (widget.product.sku.isNotEmpty) {
-      chips.add(metaChip(Icons.qr_code_rounded, 'SKU ${widget.product.sku}'));
+    if (activeProduct.sku.isNotEmpty) {
+      chips.add(metaChip(Icons.qr_code_rounded, 'SKU ${activeProduct.sku}'));
     }
 
-    if (widget.product.stock.isNotEmpty) {
+    if (activeProduct.stock.isNotEmpty) {
       chips.add(
-        metaChip(Icons.inventory_2_outlined, 'Stoc ${widget.product.stock}'),
+        metaChip(Icons.inventory_2_outlined, 'Stoc ${activeProduct.stock}'),
       );
     }
 
@@ -546,8 +595,8 @@ class _ProductPageState extends State<ProductPage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> images = widget.product.images.isNotEmpty
-        ? widget.product.images
+    final List<String> images = activeProduct.images.isNotEmpty
+        ? activeProduct.images
         : [''];
 
     return Scaffold(
@@ -555,7 +604,7 @@ class _ProductPageState extends State<ProductPage> {
       extendBody: true,
       appBar: AppBar(
         title: Text(
-          widget.product.title,
+          activeProduct.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -598,14 +647,14 @@ class _ProductPageState extends State<ProductPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          widget.product.category,
+                          activeProduct.category,
                           style: TextStyle(
                             color: mutedTextColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      if (widget.product.discountPercent > 0)
+                      if (activeProduct.discountPercent > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -629,7 +678,7 @@ class _ProductPageState extends State<ProductPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.product.title,
+                    activeProduct.title,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 27,
@@ -656,6 +705,40 @@ class _ProductPageState extends State<ProductPage> {
                   const SizedBox(height: 20),
                   trustBadges(),
                   const SizedBox(height: 28),
+                  if (productDetailsLoading) ...[
+                    Center(
+                      child: Column(
+                        children: [
+                          const CircularProgressIndicator(color: primaryColor),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Încărcăm descrierea și galeria produsului...',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: mutedTextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (productDetailsError.isNotEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.24),
+                        ),
+                      ),
+                      child: Text(
+                        'Nu am putut încărca detaliile complete. Poți încerca din nou mai târziu.',
+                        style: TextStyle(color: mutedTextColor),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   descriptionSection(),
                   const SizedBox(height: 28),
                   Container(

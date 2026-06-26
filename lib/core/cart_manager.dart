@@ -46,6 +46,7 @@ class CartManager {
       final p = item['product'] as Map<String, dynamic>;
 
       final product = Product(
+        id: p['id'] ?? '',
         title: p['title'] ?? '',
         price: p['price'] ?? '',
         oldPrice: p['oldPrice'] ?? '',

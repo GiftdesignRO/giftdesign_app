@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Product {
+  final String id;
   final String title;
   final String price;
   final String oldPrice;
@@ -15,6 +16,7 @@ class Product {
   final String dateModified;
 
   Product({
+    required this.id,
     required this.title,
     required this.price,
     required this.oldPrice,
@@ -120,22 +122,25 @@ class Product {
           json['meta_desc'],
     );
 
+    debugPrint('DESCRIPTION TYPE: ${json['description'].runtimeType}');
+debugPrint('DESCRIPTION VALUE: ${json['description']}');
     final longDesc = cleanHtml(
+  json['description'] ??
+      json['description_html'] ??
+      json['desc'] ??
+      json['content'] ??
+      json['product_description'] ??
       meta['description'] ??
-          meta['description_html'] ??
-          meta['full_description'] ??
-          json['description'] ??
-          json['description_html'] ??
-          json['desc'] ??
-          json['content'] ??
-          json['product_description'],
-    );
+      meta['description_html'] ??
+      meta['full_description'],
+);
 
     final bestDescription = longDesc.isNotEmpty
         ? longDesc
         : shortDesc.isNotEmpty
         ? shortDesc
         : 'Descriere indisponibilă momentan';
+        debugPrint('BEST DESCRIPTION LENGTH: ${bestDescription.length}');
 
     double readPrice(dynamic value) {
       if (value == null) return 0;
@@ -188,6 +193,7 @@ class Product {
         : 0;
 
     return Product(
+      id: (json['id'] ?? json['product_id'] ?? '').toString(),
       title: json['name']?.toString() ?? 'Produs GiftDesign',
       price: formatPrice(currentPriceValue),
       oldPrice: discount > 0 ? formatPrice(oldPriceValue) : '',

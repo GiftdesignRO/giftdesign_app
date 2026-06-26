@@ -54,7 +54,7 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$apiBaseUrl/product-details/${Uri.encodeComponent(sku)}'),
+            Uri.parse('$apiBaseUrl/product/${Uri.encodeComponent(sku)}'),
             headers: await authHeaders(),
           )
           .timeout(const Duration(seconds: 30));

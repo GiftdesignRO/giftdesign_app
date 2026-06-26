@@ -2561,7 +2561,7 @@ trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 128,
+          height: 140,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: recentlyViewed.length,
